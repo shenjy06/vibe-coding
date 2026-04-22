@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>摄像头预览</title>
+  <link rel="stylesheet" href="camera.css">
+</head>
+<body>
+  <div class="toolbar">
+    <div class="shape-group">
+      <span class="label">形状：</span>
+      <button id="btnSquare" class="shape-btn active">正方形</button>
+      <button id="btnCircle" class="shape-btn">圆形</button>
+    </div>
+
+    <div class="size-group">
+      <span class="label">大小：</span>
+      <input type="range" id="sizeSlider" min="100" max="600" value="300" step="10">
+      <span id="sizeLabel">300px</span>
+    </div>
+
+    <div class="action-group">
+      <button id="btnRecord" class="btn-rec" title="开始录制"></button>
+      <button id="btnSnapshot" class="btn-snap" title="截图">拍照</button>
+    </div>
+  </div>
+
+  <div class="canvas-wrapper" id="canvasWrapper">
+    <canvas id="previewCanvas" width="300" height="300"></canvas>
+  </div>
+
+  <div class="status-bar" id="statusBar">正在启动摄像头...</div>
+
+  <!-- 隐藏的 video 元素 -->
+  <video id="videoFeed" autoplay playsinline style="display:none"></video>
+
+  <script src="camera.js"></script>
+</body>
+</html>

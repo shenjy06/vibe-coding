@@ -11,3 +11,7 @@ Thumbs.db
 
 # 如果将来添加 Node 依赖
 node_modules/
+
+# Chrome 扩展私钥和打包产物
+*.pem
+*.crx

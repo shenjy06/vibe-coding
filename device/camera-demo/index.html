@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>摄像头演示</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, "Microsoft YaHei", sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 16px;
+      color: #e94560;
+    }
+
+    .video-container {
+      position: relative;
+      width: 640px;
+      max-width: 90vw;
+      aspect-ratio: 4 / 3;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(233, 69, 96, 0.2);
+    }
+
+    video, canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #snapshot { display: none; }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+      font-family: inherit;
+    }
+
+    button:active { transform: scale(0.96); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-start { background: #e94560; color: #fff; }
+    .btn-switch { background: #0f3460; color: #fff; }
+    .btn-photo { background: #16213e; color: #fff; border: 1px solid #e94560; }
+    .btn-record { background: #e94560; color: #fff; }
+    .btn-record.recording { background: #ff0040; animation: pulse 1s infinite; }
+    .btn-stop { background: #533483; color: #fff; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: #888;
+      min-height: 1.2em;
+    }
+
+    .gallery {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 640px;
+    }
+
+    .gallery-item {
+      position: relative;
+      display: inline-block;
+    }
+
+    .gallery-item img, .gallery-item video {
+      width: 120px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 2px solid #333;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      display: block;
+    }
+
+    .gallery-item img:hover, .gallery-item video:hover {
+      border-color: #e94560;
+    }
+
+    .gallery-item .btn-remove {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e94560;
+      color: #fff;
+      border: 2px solid #1a1a2e;
+      font-size: 12px;
+      line-height: 18px;
+      text-align: center;
+      cursor: pointer;
+      padding: 0;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .gallery-item:hover .btn-remove { opacity: 1; }
+
+    .error-msg {
+      margin-top: 20px;
+      padding: 16px 24px;
+      background: rgba(233, 69, 96, 0.15);
+      border: 1px solid #e94560;
+      border-radius: 8px;
+      color: #ff6b6b;
+      max-width: 480px;
+      text-align: center;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>摄像头演示</h1>
+
+  <div class="video-container">
+    <video id="video" autoplay playsinline></video>
+    <canvas id="snapshot"></canvas>
+  </div>
+
+  <div class="controls">
+    <button class="btn-start" id="btnStart">打开摄像头</button>
+    <button class="btn-switch" id="btnSwitch" disabled>切换摄像头</button>
+    <button class="btn-photo" id="btnPhoto" disabled>拍照</button>
+    <button class="btn-record" id="btnRecord" disabled>开始录像</button>
+    <button class="btn-stop" id="btnStop" disabled>关闭摄像头</button>
+  </div>
+
+  <div class="status" id="status">点击「打开摄像头」开始</div>
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="gallery" id="gallery"></div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('snapshot');
+    const ctx = canvas.getContext('2d');
+    const btnStart = document.getElementById('btnStart');
+    const btnSwitch = document.getElementById('btnSwitch');
+    const btnPhoto = document.getElementById('btnPhoto');
+    const btnRecord = document.getElementById('btnRecord');
+    const btnStop = document.getElementById('btnStop');
+    const status = document.getElementById('status');
+    const errorMsg = document.getElementById('errorMsg');
+    const gallery = document.getElementById('gallery');
+
+    let stream = null;
+    let facingMode = 'user'; // 'user' = 前置, 'environment' = 后置
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+
+    // ---------- 摄像头控制 ----------
+
+    async function startCamera() {
+      try {
+        errorMsg.style.display = 'none';
+        status.textContent = '正在请求摄像头权限...';
+
+        const constraints = {
+          video: { facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
+          audio: true
+        };
+
+        if (stream) {
+          stream.getTracks().forEach(t => t.stop());
+        }
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+
+        await video.play();
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        setButtons(true);
+        status.textContent = '摄像头已开启';
+
+        // 检测是否有多个摄像头可切换
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoInputs = devices.filter(d => d.kind === 'videoinput');
+        btnSwitch.disabled = videoInputs.length < 2;
+      } catch (err) {
+        handleError(err);
+      }
+    }
+
+    function stopCamera() {
+      if (isRecording) toggleRecord();
+
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      setButtons(false);
+      status.textContent = '摄像头已关闭';
+    }
+
+    async function switchCamera() {
+      facingMode = facingMode === 'user' ? 'environment' : 'user';
+      status.textContent = '正在切换摄像头...';
+      await startCamera();
+    }
+
+    // ---------- 拍照 ----------
+
+    function takePhoto() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.title = '点击下载';
+      img.addEventListener('click', () => downloadBlob(dataUrl, 'photo_' + timestamp() + '.png'));
+      gallery.prepend(wrapGalleryItem(img));
+
+      status.textContent = '拍照完成！';
+      setTimeout(() => { if (stream) status.textContent = '摄像头已开启'; }, 1500);
+    }
+
+    // ---------- 录像 ----------
+
+    function toggleRecord() {
+      if (!isRecording) {
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedMime() });
+
+        mediaRecorder.ondataavailable = e => {
+          if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+          const url = URL.createObjectURL(blob);
+
+          const vid = document.createElement('video');
+          vid.src = url;
+          vid.controls = true;
+          vid.title = '点击下载';
+          vid.addEventListener('click', () => {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'video_' + timestamp() + '.webm';
+            a.click();
+          });
+          gallery.prepend(wrapGalleryItem(vid));
+          status.textContent = '录像已保存！';
+          setTimeout(() => { if (stream) status.textContent = '摄像头已开启'; }, 1500);
+        };
+
+        mediaRecorder.start(100);
+        isRecording = true;
+        btnRecord.textContent = '停止录像';
+        btnRecord.classList.add('recording');
+        btnStart.disabled = true;
+        btnStop.disabled = true;
+        status.textContent = '正在录像...';
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        btnRecord.textContent = '开始录像';
+        btnRecord.classList.remove('recording');
+        btnStart.disabled = false;
+        btnStop.disabled = false;
+      }
+    }
+
+    // ---------- 工具函数 ----------
+
+    function getSupportedMime() {
+      const types = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+        'video/mp4'
+      ];
+      return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+    }
+
+    function timestamp() {
+      return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    }
+
+    function downloadBlob(dataUrl, filename) {
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = filename;
+      a.click();
+    }
+
+    function wrapGalleryItem(el) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'gallery-item';
+      wrapper.appendChild(el);
+      const btn = document.createElement('button');
+      btn.className = 'btn-remove';
+      btn.textContent = '×';
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (el.tagName === 'VIDEO' && el.src) URL.revokeObjectURL(el.src);
+        wrapper.remove();
+      });
+      wrapper.appendChild(btn);
+      return wrapper;
+    }
+
+    function setButtons(active) {
+      btnStart.disabled = active;
+      btnPhoto.disabled = !active;
+      btnRecord.disabled = !active;
+      btnStop.disabled = !active;
+      if (!active) btnSwitch.disabled = true;
+    }
+
+    function handleError(err) {
+      const messages = {
+        NotAllowedError: '摄像头权限被拒绝，请在浏览器设置中允许访问。',
+        NotFoundError: '未检测到摄像头设备。',
+        NotReadableError: '摄像头被其他程序占用。',
+        OverconstrainedError: '无法满足请求的摄像头配置。'
+      };
+      const msg = messages[err.name] || ('未知错误：' + err.message);
+      errorMsg.textContent = msg;
+      errorMsg.style.display = 'block';
+      status.textContent = '';
+      setButtons(false);
+    }
+
+    // ---------- 事件绑定 ----------
+
+    btnStart.addEventListener('click', startCamera);
+    btnStop.addEventListener('click', stopCamera);
+    btnSwitch.addEventListener('click', switchCamera);
+    btnPhoto.addEventListener('click', takePhoto);
+    btnRecord.addEventListener('click', toggleRecord);
+
+    // 页面关闭时释放资源
+    window.addEventListener('beforeunload', () => {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    });
+  </script>
+</body>
+</html>

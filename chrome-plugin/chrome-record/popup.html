@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>录制工具</h1>
+
+    <section class="section">
+      <h2>摄像头预览</h2>
+      <button id="btnCamera" class="btn btn-primary">打开摄像头窗口</button>
+    </section>
+
+    <section class="section">
+      <h2>Tab 页面录制</h2>
+      <p class="hint">录制当前浏览器标签页的内容（含音频）</p>
+      <div class="btn-group">
+        <button id="btnStartTab" class="btn btn-danger">开始录制Tab</button>
+        <button id="btnStopTab" class="btn btn-secondary" disabled>停止录制</button>
+      </div>
+      <div id="tabStatus" class="status"></div>
+    </section>
+
+    <section class="section">
+      <h2>摄像头录制</h2>
+      <p class="hint">录制摄像头画面（独立窗口）</p>
+      <div class="btn-group">
+        <button id="btnStartCam" class="btn btn-danger">开始录制摄像头</button>
+        <button id="btnStopCam" class="btn btn-secondary" disabled>停止录制</button>
+      </div>
+      <div id="camStatus" class="status"></div>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
