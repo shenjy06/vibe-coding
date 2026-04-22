@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>贪吃蛇</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1a2e;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  color: #eee;
+}
+.game-container {
+  text-align: center;
+}
+h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: #0f0;
+  text-shadow: 0 0 10px #0f0;
+}
+#score {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+canvas {
+  border: 2px solid #0f0;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+  display: block;
+  margin: 0 auto;
+}
+#message {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  min-height: 1.5em;
+  color: #ff6b6b;
+}
+.hint {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #888;
+}
+</style>
+</head>
+<body>
+<div class="game-container">
+  <h1>贪吃蛇</h1>
+  <div id="score">得分：0</div>
+  <canvas id="game" width="400" height="400"></canvas>
+  <div id="message">按 任意方向键 开始游戏</div>
+  <div class="hint">方向键控制移动 | 空格键重新开始</div>
+</div>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const msgEl = document.getElementById('message');
+
+const GRID = 20;
+const COLS = canvas.width / GRID;
+const ROWS = canvas.height / GRID;
+const SPEED = 150;
+
+let snake, dir, nextDir, food, score, running, gameOver, loop;
+
+function init() {
+  snake = [{ x: 10, y: 10 }];
+  dir = { x: 0, y: 0 };
+  nextDir = { x: 0, y: 0 };
+  score = 0;
+  running = false;
+  gameOver = false;
+  scoreEl.textContent = '得分：0';
+  msgEl.textContent = '按 任意方向键 开始游戏';
+  msgEl.style.color = '#ff6b6b';
+  placeFood();
+  draw();
+}
+
+function placeFood() {
+  let pos;
+  do {
+    pos = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+  } while (snake.some(s => s.x === pos.x && s.y === pos.y));
+  food = pos;
+}
+
+function update() {
+  dir = { ...nextDir };
+  const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+  // 撞墙
+  if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
+    endGame();
+    return;
+  }
+  // 撞自己
+  if (snake.some(s => s.x === head.x && s.y === head.y)) {
+    endGame();
+    return;
+  }
+
+  snake.unshift(head);
+
+  // 吃食物
+  if (head.x === food.x && head.y === food.y) {
+    score++;
+    scoreEl.textContent = '得分：' + score;
+    placeFood();
+  } else {
+    snake.pop();
+  }
+
+  draw();
+}
+
+function draw() {
+  ctx.fillStyle = '#16213e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 网格线
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  for (let i = 0; i <= COLS; i++) {
+    ctx.beginPath(); ctx.moveTo(i * GRID, 0); ctx.lineTo(i * GRID, canvas.height); ctx.stroke();
+  }
+  for (let j = 0; j <= ROWS; j++) {
+    ctx.beginPath(); ctx.moveTo(0, j * GRID); ctx.lineTo(canvas.width, j * GRID); ctx.stroke();
+  }
+
+  // 食物
+  ctx.fillStyle = '#ff6b6b';
+  ctx.shadowColor = '#ff6b6b';
+  ctx.shadowBlur = 10;
+  roundRect(food.x * GRID + 2, food.y * GRID + 2, GRID - 4, GRID - 4, 4);
+  ctx.shadowBlur = 0;
+
+  // 蛇
+  snake.forEach((seg, i) => {
+    const ratio = 1 - i / snake.length * 0.6;
+    ctx.fillStyle = i === 0 ? '#0f0' : `rgba(0, ${Math.floor(200 * ratio)}, 0, ${ratio})`;
+    ctx.shadowColor = '#0f0';
+    ctx.shadowBlur = i === 0 ? 8 : 0;
+    roundRect(seg.x * GRID + 1, seg.y * GRID + 1, GRID - 2, GRID - 2, 3);
+  });
+  ctx.shadowBlur = 0;
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.fill();
+}
+
+function endGame() {
+  gameOver = true;
+  running = false;
+  clearInterval(loop);
+  msgEl.textContent = '游戏结束！得分：' + score + '（按 空格键 重新开始）';
+  msgEl.style.color = '#ff6b6b';
+}
+
+const DIRS = {
+  ArrowUp:    { x: 0, y: -1 },
+  ArrowDown:  { x: 0, y:  1 },
+  ArrowLeft:  { x: -1, y: 0 },
+  ArrowRight: { x:  1, y: 0 },
+};
+
+document.addEventListener('keydown', e => {
+  if (gameOver && e.code === 'Space') {
+    init();
+    return;
+  }
+
+  const d = DIRS[e.code];
+  if (!d) return;
+  e.preventDefault();
+
+  // 禁止反向
+  if (dir.x + d.x === 0 && dir.y + d.y === 0 && running) return;
+
+  nextDir = d;
+  if (!running && !gameOver) {
+    running = true;
+    msgEl.textContent = '';
+    loop = setInterval(update, SPEED);
+  }
+});
+
+init();
+</script>
+</body>
+</html>
