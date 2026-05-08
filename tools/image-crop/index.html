@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片裁剪工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 20px;
+        }
+        @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .panel h3 {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 15px;
+        }
+        .upload-area {
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover { border-color: #f59e0b; background: rgba(245,158,11,0.1); }
+        .upload-icon { font-size: 64px; margin-bottom: 15px; }
+        .upload-text { color: #888; font-size: 16px; }
+        #fileInput { display: none; }
+        .editor-area {
+            display: none;
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            min-height: 400px;
+        }
+        .editor-area.visible { display: flex; justify-content: center; align-items: center; }
+        #editorCanvas { max-width: 100%; max-height: 500px; cursor: crosshair; }
+        .crop-overlay {
+            position: absolute;
+            border: 2px dashed #f59e0b;
+            background: rgba(245,158,11,0.1);
+            cursor: move;
+        }
+        .crop-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #f59e0b;
+            border-radius: 50%;
+        }
+        .crop-handle.tl { top: -6px; left: -6px; cursor: nw-resize; }
+        .crop-handle.tr { top: -6px; right: -6px; cursor: ne-resize; }
+        .crop-handle.bl { bottom: -6px; left: -6px; cursor: sw-resize; }
+        .crop-handle.br { bottom: -6px; right: -6px; cursor: se-resize; }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        .control-group label {
+            display: block;
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+        .size-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+            text-align: center;
+        }
+        input:focus { outline: none; border-color: #f59e0b; }
+        .ratio-btns {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .ratio-btn {
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .ratio-btn.active {
+            background: #f59e0b;
+            border-color: #f59e0b;
+            color: #000;
+        }
+        .ratio-btn:hover:not(.active) { background: rgba(255,255,255,0.1); }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(245,158,11,0.4); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #ccc;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .info-text {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>图片裁剪工具</h1>
+        <div class="main-layout">
+            <div class="panel" id="editorPanel">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">✂️</div>
+                    <div class="upload-text">拖拽图片到这里，或点击上传</div>
+                    <input type="file" id="fileInput" accept="image/*">
+                </div>
+                <div class="editor-area" id="editorArea">
+                    <canvas id="editorCanvas"></canvas>
+                    <div class="crop-overlay" id="cropOverlay" style="display:none;">
+                        <div class="crop-handle tl"></div>
+                        <div class="crop-handle tr"></div>
+                        <div class="crop-handle bl"></div>
+                        <div class="crop-handle br"></div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="panel">
+                    <h3>裁剪比例</h3>
+                    <div class="ratio-btns">
+                        <div class="ratio-btn active" data-ratio="free">自由</div>
+                        <div class="ratio-btn" data-ratio="1:1">1:1</div>
+                        <div class="ratio-btn" data-ratio="4:3">4:3</div>
+                        <div class="ratio-btn" data-ratio="16:9">16:9</div>
+                        <div class="ratio-btn" data-ratio="3:2">3:2</div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h3>裁剪区域</h3>
+                    <div class="size-inputs">
+                        <div>
+                            <label>宽度</label>
+                            <input type="number" id="cropWidth" value="0">
+                        </div>
+                        <div>
+                            <label>高度</label>
+                            <input type="number" id="cropHeight" value="0">
+                        </div>
+                    </div>
+                    <div class="info-text" id="cropInfo">请上传图片开始裁剪</div>
+                </div>
+                <div class="panel">
+                    <h3>操作</h3>
+                    <button class="btn btn-primary" id="cropBtn">裁剪并下载</button>
+                    <button class="btn btn-secondary" id="resetBtn">重新选择</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const editorArea = document.getElementById('editorArea');
+        const canvas = document.getElementById('editorCanvas');
+        const ctx = canvas.getContext('2d');
+        const cropOverlay = document.getElementById('cropOverlay');
+
+        let originalImage = null;
+        let cropRect = { x: 0, y: 0, w: 0, h: 0 };
+        let isDragging = false;
+        let dragType = null;
+        let dragStartX, dragStartY;
+        let currentRatio = null;
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#f59e0b'; });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = 'rgba(255,255,255,0.2)'; });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'rgba(255,255,255,0.2)';
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImage = new Image();
+                originalImage.onload = () => {
+                    uploadArea.style.display = 'none';
+                    editorArea.classList.add('visible');
+                    initEditor();
+                };
+                originalImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function initEditor() {
+            const maxW = editorArea.clientWidth;
+            const maxH = 500;
+            const ratio = originalImage.width / originalImage.height;
+
+            if (ratio > maxW / maxH) {
+                canvas.width = maxW;
+                canvas.height = maxW / ratio;
+            } else {
+                canvas.height = maxH;
+                canvas.width = maxH * ratio;
+            }
+
+            ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+
+            cropRect = {
+                x: canvas.width * 0.1,
+                y: canvas.height * 0.1,
+                w: canvas.width * 0.8,
+                h: canvas.height * 0.8
+            };
+            updateCropOverlay();
+        }
+
+        function updateCropOverlay() {
+            const canvasRect = canvas.getBoundingClientRect();
+            const editorRect = editorArea.getBoundingClientRect();
+
+            cropOverlay.style.display = 'block';
+            cropOverlay.style.left = (canvasRect.left - editorRect.left + cropRect.x) + 'px';
+            cropOverlay.style.top = (canvasRect.top - editorRect.top + cropRect.y) + 'px';
+            cropOverlay.style.width = cropRect.w + 'px';
+            cropOverlay.style.height = cropRect.h + 'px';
+
+            const scaleX = originalImage.width / canvas.width;
+            const scaleY = originalImage.height / canvas.height;
+            document.getElementById('cropWidth').value = Math.round(cropRect.w * scaleX);
+            document.getElementById('cropHeight').value = Math.round(cropRect.h * scaleY);
+            document.getElementById('cropInfo').textContent = `原始尺寸: ${Math.round(cropRect.w * scaleX)} × ${Math.round(cropRect.h * scaleY)} px`;
+        }
+
+        document.querySelectorAll('.ratio-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const ratio = btn.dataset.ratio;
+                currentRatio = ratio === 'free' ? null : ratio.split(':').map(Number);
+
+                if (currentRatio) {
+                    const [rw, rh] = currentRatio;
+                    if (cropRect.w / cropRect.h > rw / rh) {
+                        cropRect.w = cropRect.h * (rw / rh);
+                    } else {
+                        cropRect.h = cropRect.w * (rh / rw);
+                    }
+                    updateCropOverlay();
+                }
+            });
+        });
+
+        cropOverlay.addEventListener('mousedown', (e) => {
+            const rect = cropOverlay.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (x < 12 && y < 12) dragType = 'tl';
+            else if (x > rect.width - 12 && y < 12) dragType = 'tr';
+            else if (x < 12 && y > rect.height - 12) dragType = 'bl';
+            else if (x > rect.width - 12 && y > rect.height - 12) dragType = 'br';
+            else dragType = 'move';
+
+            isDragging = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - dragStartX;
+            const dy = e.clientY - dragStartY;
+
+            if (dragType === 'move') {
+                cropRect.x = Math.max(0, Math.min(canvas.width - cropRect.w, cropRect.x + dx));
+                cropRect.y = Math.max(0, Math.min(canvas.height - cropRect.h, cropRect.y + dy));
+            } else {
+                if (dragType.includes('r') || dragType === 'br') {
+                    cropRect.w = Math.max(20, Math.min(canvas.width - cropRect.x, cropRect.w + dx));
+                    if (currentRatio) cropRect.h = cropRect.w * (currentRatio[1] / currentRatio[0]);
+                }
+                if (dragType.includes('b') || dragType === 'bl') {
+                    cropRect.h = Math.max(20, Math.min(canvas.height - cropRect.y, cropRect.h + dy));
+                    if (currentRatio) cropRect.w = cropRect.h * (currentRatio[0] / currentRatio[1]);
+                }
+                if (dragType.includes('l')) {
+                    const newW = Math.max(20, cropRect.w - dx);
+                    cropRect.x += cropRect.w - newW;
+                    cropRect.w = newW;
+                    if (currentRatio) cropRect.h = cropRect.w * (currentRatio[1] / currentRatio[0]);
+                }
+                if (dragType.includes('t')) {
+                    const newH = Math.max(20, cropRect.h - dy);
+                    cropRect.y += cropRect.h - newH;
+                    cropRect.h = newH;
+                    if (currentRatio) cropRect.w = cropRect.h * (currentRatio[0] / currentRatio[1]);
+                }
+            }
+
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            updateCropOverlay();
+        });
+
+        document.addEventListener('mouseup', () => { isDragging = false; dragType = null; });
+
+        document.getElementById('cropBtn').addEventListener('click', () => {
+            const scaleX = originalImage.width / canvas.width;
+            const scaleY = originalImage.height / canvas.height;
+
+            const resultCanvas = document.createElement('canvas');
+            resultCanvas.width = Math.round(cropRect.w * scaleX);
+            resultCanvas.height = Math.round(cropRect.h * scaleY);
+            const resultCtx = resultCanvas.getContext('2d');
+
+            resultCtx.drawImage(originalImage,
+                cropRect.x * scaleX, cropRect.y * scaleY,
+                cropRect.w * scaleX, cropRect.h * scaleY,
+                0, 0, resultCanvas.width, resultCanvas.height
+            );
+
+            const link = document.createElement('a');
+            link.download = 'cropped.png';
+            link.href = resultCanvas.toDataURL('image/png');
+            link.click();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            originalImage = null;
+            fileInput.value = '';
+            uploadArea.style.display = 'block';
+            editorArea.classList.remove('visible');
+            cropOverlay.style.display = 'none';
+        });
+    </script>
+</body>
+</html>

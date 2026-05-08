@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 编辑器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .toolbar {
+            background: rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .toolbar-btn {
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .toolbar-btn:hover { background: rgba(255,255,255,0.1); }
+        .toolbar-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255,255,255,0.1);
+            margin: 0 5px;
+        }
+        .editor-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: calc(100vh - 50px);
+        }
+        @media (max-width: 800px) { .editor-layout { grid-template-columns: 1fr; } }
+        .editor-pane {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+        .pane-header {
+            padding: 10px 15px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 12px;
+            color: #6b7280;
+        }
+        #editor {
+            flex: 1;
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: none;
+            color: #e0e0e0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            padding: 15px;
+            resize: none;
+            outline: none;
+            line-height: 1.6;
+            tab-size: 4;
+        }
+        .preview-pane {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #preview {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #1e1e1e;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        #preview h1 { font-size: 2em; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin: 20px 0 15px; }
+        #preview h2 { font-size: 1.5em; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin: 18px 0 12px; }
+        #preview h3 { font-size: 1.25em; margin: 15px 0 10px; }
+        #preview h4, #preview h5, #preview h6 { margin: 12px 0 8px; }
+        #preview p { margin: 10px 0; }
+        #preview a { color: #60a5fa; text-decoration: none; }
+        #preview a:hover { text-decoration: underline; }
+        #preview code {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        #preview pre {
+            background: rgba(0,0,0,0.4);
+            border-radius: 8px;
+            padding: 15px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        #preview pre code {
+            background: none;
+            padding: 0;
+        }
+        #preview blockquote {
+            border-left: 4px solid #667eea;
+            padding: 10px 15px;
+            margin: 15px 0;
+            background: rgba(102,126,234,0.1);
+            border-radius: 0 8px 8px 0;
+        }
+        #preview ul, #preview ol { padding-left: 25px; margin: 10px 0; }
+        #preview li { margin: 5px 0; }
+        #preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+        }
+        #preview th, #preview td {
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 10px;
+            text-align: left;
+        }
+        #preview th { background: rgba(255,255,255,0.05); }
+        #preview img { max-width: 100%; border-radius: 8px; margin: 10px 0; }
+        #preview hr {
+            border: none;
+            border-top: 2px solid rgba(255,255,255,0.1);
+            margin: 20px 0;
+        }
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.05);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: 5px 15px;
+            font-size: 12px;
+            color: #6b7280;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div class="toolbar-btn" data-action="bold" title="粗体">B</div>
+        <div class="toolbar-btn" data-action="italic" title="斜体"><i>I</i></div>
+        <div class="toolbar-btn" data-action="strikethrough" title="删除线"><s>S</s></div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-btn" data-action="h1" title="标题1">H1</div>
+        <div class="toolbar-btn" data-action="h2" title="标题2">H2</div>
+        <div class="toolbar-btn" data-action="h3" title="标题3">H3</div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-btn" data-action="ul" title="无序列表">• 列表</div>
+        <div class="toolbar-btn" data-action="ol" title="有序列表">1. 列表</div>
+        <div class="toolbar-btn" data-action="checklist" title="任务列表">☑ 任务</div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-btn" data-action="code" title="行内代码">`代码`</div>
+        <div class="toolbar-btn" data-action="codeblock" title="代码块">```代码块```</div>
+        <div class="toolbar-btn" data-action="quote" title="引用">> 引用</div>
+        <div class="toolbar-btn" data-action="link" title="链接">🔗 链接</div>
+        <div class="toolbar-btn" data-action="image" title="图片">🖼️ 图片</div>
+        <div class="toolbar-btn" data-action="table" title="表格">📊 表格</div>
+        <div class="toolbar-btn" data-action="hr" title="分割线">— 分割线</div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-btn" id="copyHtml" title="复制HTML">📋 复制HTML</div>
+        <div class="toolbar-btn" id="copyMd" title="复制Markdown">📝 复制MD</div>
+    </div>
+    <div class="editor-layout">
+        <div class="editor-pane">
+            <div class="pane-header">Markdown 源码</div>
+            <textarea id="editor"># Markdown 编辑器
+
+欢迎使用 **Markdown 编辑器**！这是一个实时预览的编辑器。
+
+## 功能特性
+
+- **实时预览** - 左侧编辑，右侧即时显示
+- **工具栏** - 快速插入常用语法
+- **语法高亮** - 支持代码块高亮
+- **导出功能** - 复制 HTML 或 Markdown
+
+## 代码示例
+
+```javascript
+function hello(name) {
+    console.log(`Hello, ${name}!`);
+}
+```
+
+## 表格示例
+
+| 功能 | 说明 |
+|------|------|
+| 粗体 | `**文本**` |
+| 斜体 | `*文本*` |
+| 代码 | `` `代码` `` |
+
+> 💡 提示：可以使用工具栏快速插入语法
+
+---
+
+*开始编辑吧！*</textarea>
+        </div>
+        <div class="preview-pane">
+            <div class="pane-header">预览</div>
+            <div id="preview"></div>
+        </div>
+    </div>
+    <div class="status-bar">
+        <span id="charCount">字符: 0</span>
+        <span id="wordCount">字数: 0</span>
+    </div>
+    <script>
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+
+        function parseMarkdown(md) {
+            let html = md;
+
+            // Code blocks
+            html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
+
+            // Inline code
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Headers
+            html = html.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+            html = html.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+            html = html.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+            html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+
+            // Horizontal rule
+            html = html.replace(/^---$/gm, '<hr>');
+
+            // Bold and italic
+            html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+            // Links and images
+            html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+            // Blockquotes
+            html = html.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+
+            // Task lists
+            html = html.replace(/^- \[x\]\s+(.+)$/gm, '<div><input type="checkbox" checked disabled> $1</div>');
+            html = html.replace(/^- \[ \]\s+(.+)$/gm, '<div><input type="checkbox" disabled> $1</div>');
+
+            // Unordered list
+            html = html.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+            // Ordered list
+            html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+
+            // Tables
+            html = html.replace(/^\|(.+)\|$/gm, (match, content) => {
+                const cells = content.split('|').map(c => c.trim());
+                return '<tr>' + cells.map(c => {
+                    if (/^[-:]+$/.test(c)) return '';
+                    return '<td>' + c + '</td>';
+                }).join('') + '</tr>';
+            });
+            html = html.replace(/(<tr>.*<\/tr>\n?)+/g, '<table>$&</table>');
+
+            // Paragraphs
+            html = html.replace(/^(?!<[a-z]|$)(.+)$/gm, '<p>$1</p>');
+
+            // Clean up empty lines
+            html = html.replace(/\n{2,}/g, '\n');
+
+            return html;
+        }
+
+        function updatePreview() {
+            preview.innerHTML = parseMarkdown(editor.value);
+            document.getElementById('charCount').textContent = '字符: ' + editor.value.length;
+            const words = editor.value.replace(/\s+/g, ' ').trim().split(' ').length;
+            document.getElementById('wordCount').textContent = '字数: ' + (editor.value.trim() ? words : 0);
+        }
+
+        editor.addEventListener('input', updatePreview);
+
+        document.querySelectorAll('.toolbar-btn[data-action]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.action;
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                const selected = editor.value.substring(start, end);
+
+                const templates = {
+                    bold: { before: '**', after: '**', placeholder: '粗体文本' },
+                    italic: { before: '*', after: '*', placeholder: '斜体文本' },
+                    strikethrough: { before: '~~', after: '~~', placeholder: '删除线文本' },
+                    h1: { before: '# ', after: '', placeholder: '标题1' },
+                    h2: { before: '## ', after: '', placeholder: '标题2' },
+                    h3: { before: '### ', after: '', placeholder: '标题3' },
+                    ul: { before: '- ', after: '', placeholder: '列表项' },
+                    ol: { before: '1. ', after: '', placeholder: '列表项' },
+                    checklist: { before: '- [ ] ', after: '', placeholder: '任务项' },
+                    code: { before: '`', after: '`', placeholder: '代码' },
+                    codeblock: { before: '```\n', after: '\n```', placeholder: '代码块' },
+                    quote: { before: '> ', after: '', placeholder: '引用文本' },
+                    link: { before: '[', after: '](url)', placeholder: '链接文本' },
+                    image: { before: '![', after: '](url)', placeholder: '图片描述' },
+                    table: { before: '| 列1 | 列2 | 列3 |\n|------|------|------|\n| 内容 | 内容 | 内容 |', after: '', placeholder: '' },
+                    hr: { before: '\n---\n', after: '', placeholder: '' }
+                };
+
+                const t = templates[action];
+                if (!t) return;
+
+                const text = selected || t.placeholder;
+                editor.value = editor.value.substring(0, start) + t.before + text + t.after + editor.value.substring(end);
+                editor.focus();
+                editor.selectionStart = start + t.before.length;
+                editor.selectionEnd = start + t.before.length + text.length;
+                updatePreview();
+            });
+        });
+
+        document.getElementById('copyHtml').addEventListener('click', () => {
+            navigator.clipboard.writeText(preview.innerHTML).then(() => {
+                document.getElementById('copyHtml').textContent = '✓ 已复制';
+                setTimeout(() => document.getElementById('copyHtml').textContent = '📋 复制HTML', 1500);
+            });
+        });
+
+        document.getElementById('copyMd').addEventListener('click', () => {
+            navigator.clipboard.writeText(editor.value).then(() => {
+                document.getElementById('copyMd').textContent = '✓ 已复制';
+                setTimeout(() => document.getElementById('copyMd').textContent = '📝 复制MD', 1500);
+            });
+        });
+
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = editor.selectionStart;
+                editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(editor.selectionEnd);
+                editor.selectionStart = editor.selectionEnd = start + 4;
+                updatePreview();
+            }
+        });
+
+        updatePreview();
+    </script>
+</body>
+</html>

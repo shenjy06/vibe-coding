@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>像素画编辑器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #f472b6, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            gap: 15px;
+        }
+        @media (max-width: 1000px) { .main-layout { grid-template-columns: 1fr; } }
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+        }
+        .panel h3 {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
+        .canvas-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 500px;
+        }
+        #pixelCanvas {
+            border: 1px solid rgba(255,255,255,0.1);
+            cursor: crosshair;
+            image-rendering: pixelated;
+        }
+        .tool-btn {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tool-btn.active {
+            background: rgba(167,139,250,0.3);
+            border-color: #a78bfa;
+            color: #a78bfa;
+        }
+        .tool-btn:hover:not(.active) { background: rgba(255,255,255,0.1); }
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+        }
+        .color-hex {
+            flex: 1;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .color-hex:focus { outline: none; border-color: #a78bfa; }
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .palette-color {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .palette-color:hover { transform: scale(1.1); }
+        .palette-color.active { border-color: #fff; }
+        .size-control {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .size-control label {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .size-control input {
+            width: 100%;
+            padding: 6px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+            text-align: center;
+        }
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #ccc;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .brush-size {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        input[type="range"] {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #a78bfa;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .size-display {
+            font-size: 12px;
+            color: #a78bfa;
+            min-width: 25px;
+        }
+        .layer-btn {
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        .layer-btn.active { background: rgba(167,139,250,0.3); border-color: #a78bfa; color: #a78bfa; }
+        .grid-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: #94a3b8;
+            cursor: pointer;
+        }
+        .grid-toggle input { accent-color: #a78bfa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>像素画编辑器</h1>
+        <div class="main-layout">
+            <div>
+                <div class="panel">
+                    <h3>工具</h3>
+                    <div class="tool-btn active" data-tool="pen">✏️ 画笔</div>
+                    <div class="tool-btn" data-tool="eraser">🧹 橡皮擦</div>
+                    <div class="tool-btn" data-tool="fill">🪣 填充</div>
+                    <div class="tool-btn" data-tool="eyedropper">💧 取色器</div>
+                    <div class="tool-btn" data-tool="line">📏 直线</div>
+                    <div class="tool-btn" data-tool="rect">⬜ 矩形</div>
+                    <div class="tool-btn" data-tool="circle">⭕ 圆形</div>
+                    <div class="brush-size">
+                        <span style="font-size:12px;color:#94a3b8;">大小:</span>
+                        <input type="range" id="brushSize" min="1" max="8" value="1">
+                        <span class="size-display" id="sizeDisplay">1</span>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h3>画布</h3>
+                    <div class="size-control">
+                        <div>
+                            <label>宽度</label>
+                            <input type="number" id="canvasWidth" value="32" min="8" max="128">
+                        </div>
+                        <div>
+                            <label>高度</label>
+                            <input type="number" id="canvasHeight" value="32" min="8" max="128">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="resizeBtn">调整画布</button>
+                    <label class="grid-toggle">
+                        <input type="checkbox" id="showGrid" checked> 显示网格
+                    </label>
+                </div>
+                <div class="panel">
+                    <h3>操作</h3>
+                    <button class="btn btn-secondary" id="undoBtn">↩ 撤销</button>
+                    <button class="btn btn-secondary" id="clearBtn">🗑 清空</button>
+                    <button class="btn btn-primary" id="downloadBtn">💾 下载</button>
+                    <button class="btn btn-secondary" id="importBtn">📂 导入图片</button>
+                </div>
+            </div>
+            <div class="canvas-container">
+                <canvas id="pixelCanvas" width="512" height="512"></canvas>
+            </div>
+            <div>
+                <div class="panel">
+                    <h3>颜色</h3>
+                    <div class="color-picker">
+                        <input type="color" id="colorPicker" value="#000000">
+                        <input type="text" class="color-hex" id="colorHex" value="#000000">
+                    </div>
+                    <div class="palette" id="palette"></div>
+                </div>
+                <div class="panel">
+                    <h3>预设颜色</h3>
+                    <div class="palette" id="presetPalette"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none;">
+    <script>
+        const canvas = document.getElementById('pixelCanvas');
+        const ctx = canvas.getContext('2d');
+        const cellSize = 16;
+        let gridWidth = 32;
+        let gridHeight = 32;
+        let pixels = [];
+        let currentColor = '#000000';
+        let currentTool = 'pen';
+        let brushSize = 1;
+        let showGrid = true;
+        let history = [];
+        let isDrawing = false;
+        let lastX, lastY;
+
+        function initGrid() {
+            pixels = Array(gridHeight).fill(null).map(() => Array(gridWidth).fill('#ffffff'));
+            saveHistory();
+            render();
+        }
+
+        function render() {
+            canvas.width = gridWidth * cellSize;
+            canvas.height = gridHeight * cellSize;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    ctx.fillStyle = pixels[y][x];
+                    ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                }
+            }
+
+            if (showGrid) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.lineWidth = 0.5;
+                for (let x = 0; x <= gridWidth; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x * cellSize, 0);
+                    ctx.lineTo(x * cellSize, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y <= gridHeight; y++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y * cellSize);
+                    ctx.lineTo(canvas.width, y * cellSize);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function saveHistory() {
+            history.push(pixels.map(row => [...row]));
+            if (history.length > 50) history.shift();
+        }
+
+        function getPixelPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / (rect.width / gridWidth));
+            const y = Math.floor((e.clientY - rect.top) / (rect.height / gridHeight));
+            return { x: Math.max(0, Math.min(gridWidth - 1, x)), y: Math.max(0, Math.min(gridHeight - 1, y)) };
+        }
+
+        function drawPixel(x, y) {
+            if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) return;
+            const size = brushSize;
+            const half = Math.floor(size / 2);
+            for (let dy = -half; dy < size - half; dy++) {
+                for (let dx = -half; dx < size - half; dx++) {
+                    const px = x + dx, py = y + dy;
+                    if (px >= 0 && px < gridWidth && py >= 0 && py < gridHeight) {
+                        pixels[py][px] = currentTool === 'eraser' ? '#ffffff' : currentColor;
+                    }
+                }
+            }
+            render();
+        }
+
+        function floodFill(x, y, targetColor, fillColor) {
+            if (targetColor === fillColor) return;
+            const stack = [[x, y]];
+            while (stack.length > 0) {
+                const [cx, cy] = stack.pop();
+                if (cx < 0 || cx >= gridWidth || cy < 0 || cy >= gridHeight) continue;
+                if (pixels[cy][cx] !== targetColor) continue;
+                pixels[cy][cx] = fillColor;
+                stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+            }
+            render();
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const pos = getPixelPos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+
+            if (currentTool === 'pen' || currentTool === 'eraser') {
+                drawPixel(pos.x, pos.y);
+            } else if (currentTool === 'fill') {
+                saveHistory();
+                floodFill(pos.x, pos.y, pixels[pos.y][pos.x], currentColor);
+            } else if (currentTool === 'eyedropper') {
+                currentColor = pixels[pos.y][pos.x];
+                document.getElementById('colorPicker').value = currentColor;
+                document.getElementById('colorHex').value = currentColor;
+                updatePaletteActive();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const pos = getPixelPos(e);
+            if (currentTool === 'pen' || currentTool === 'eraser') {
+                drawPixel(pos.x, pos.y);
+            }
+            lastX = pos.x;
+            lastY = pos.y;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDrawing && (currentTool === 'pen' || currentTool === 'eraser')) {
+                saveHistory();
+            }
+            isDrawing = false;
+        });
+
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTool = btn.dataset.tool;
+            });
+        });
+
+        document.getElementById('brushSize').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            document.getElementById('sizeDisplay').textContent = brushSize;
+        });
+
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            document.getElementById('colorHex').value = currentColor;
+            updatePaletteActive();
+        });
+
+        document.getElementById('colorHex').addEventListener('change', (e) => {
+            currentColor = e.target.value;
+            document.getElementById('colorPicker').value = currentColor;
+            updatePaletteActive();
+        });
+
+        document.getElementById('showGrid').addEventListener('change', (e) => {
+            showGrid = e.target.checked;
+            render();
+        });
+
+        document.getElementById('resizeBtn').addEventListener('click', () => {
+            const newW = parseInt(document.getElementById('canvasWidth').value);
+            const newH = parseInt(document.getElementById('canvasHeight').value);
+            if (newW >= 8 && newW <= 128 && newH >= 8 && newH <= 128) {
+                gridWidth = newW;
+                gridHeight = newH;
+                initGrid();
+            }
+        });
+
+        document.getElementById('undoBtn').addEventListener('click', () => {
+            if (history.length > 1) {
+                history.pop();
+                pixels = history[history.length - 1].map(row => [...row]);
+                render();
+            }
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (confirm('确定要清空画布吗？')) initGrid();
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = gridWidth;
+            exportCanvas.height = gridHeight;
+            const exportCtx = exportCanvas.getContext('2d');
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    exportCtx.fillStyle = pixels[y][x];
+                    exportCtx.fillRect(x, y, 1, 1);
+                }
+            }
+            const link = document.createElement('a');
+            link.download = 'pixel-art.png';
+            link.href = exportCanvas.toDataURL('image/png');
+            link.click();
+        });
+
+        document.getElementById('importBtn').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files.length === 0) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = gridWidth;
+                    tempCanvas.height = gridHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(img, 0, 0, gridWidth, gridHeight);
+                    const imageData = tempCtx.getImageData(0, 0, gridWidth, gridHeight);
+                    for (let y = 0; y < gridHeight; y++) {
+                        for (let x = 0; x < gridWidth; x++) {
+                            const i = (y * gridWidth + x) * 4;
+                            pixels[y][x] = `#${imageData.data[i].toString(16).padStart(2, '0')}${imageData.data[i + 1].toString(16).padStart(2, '0')}${imageData.data[i + 2].toString(16).padStart(2, '0')}`;
+                        }
+                    }
+                    saveHistory();
+                    render();
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        });
+
+        const presetColors = [
+            '#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00',
+            '#ff00ff', '#00ffff', '#ff8800', '#88ff00', '#0088ff', '#ff0088',
+            '#880000', '#008800', '#000088', '#888888', '#cccccc', '#444444'
+        ];
+
+        const paletteColors = [
+            '#1a1a2e', '#16213e', '#0f3460', '#e94560', '#533483', '#2b2d42',
+            '#8d99ae', '#edf2f4', '#ef233c', '#d90429', '#2ec4b6', '#cbf3f0',
+            '#ffbe0b', '#fb5607', '#ff006e', '#8338ec', '#3a86ff', '#06d6a0'
+        ];
+
+        function createPalette(container, colors) {
+            container.innerHTML = colors.map(c =>
+                `<div class="palette-color${c === currentColor ? ' active' : ''}" style="background:${c};" data-color="${c}"></div>`
+            ).join('');
+
+            container.querySelectorAll('.palette-color').forEach(el => {
+                el.addEventListener('click', () => {
+                    currentColor = el.dataset.color;
+                    document.getElementById('colorPicker').value = currentColor;
+                    document.getElementById('colorHex').value = currentColor;
+                    updatePaletteActive();
+                });
+            });
+        }
+
+        function updatePaletteActive() {
+            document.querySelectorAll('.palette-color').forEach(el => {
+                el.classList.toggle('active', el.dataset.color === currentColor);
+            });
+        }
+
+        createPalette(document.getElementById('palette'), paletteColors);
+        createPalette(document.getElementById('presetPalette'), presetColors);
+        initGrid();
+    </script>
+</body>
+</html>

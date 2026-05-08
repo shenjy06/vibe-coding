@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flexbox/Grid 可视化</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #34d399, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .tab {
+            padding: 10px 24px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+            border-color: transparent;
+            color: #fff;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+        @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+        }
+        .panel h3 {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
+        .demo-container {
+            min-height: 400px;
+            border: 2px dashed rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+        .demo-item {
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            min-width: 60px;
+            text-align: center;
+        }
+        .item-1 { background: rgba(239,68,68,0.3); border: 1px solid rgba(239,68,68,0.5); color: #f87171; }
+        .item-2 { background: rgba(59,130,246,0.3); border: 1px solid rgba(59,130,246,0.5); color: #60a5fa; }
+        .item-3 { background: rgba(16,185,129,0.3); border: 1px solid rgba(16,185,129,0.5); color: #34d399; }
+        .item-4 { background: rgba(245,158,11,0.3); border: 1px solid rgba(245,158,11,0.5); color: #fbbf24; }
+        .item-5 { background: rgba(168,85,247,0.3); border: 1px solid rgba(168,85,247,0.5); color: #a78bfa; }
+        .item-6 { background: rgba(236,72,153,0.3); border: 1px solid rgba(236,72,153,0.5); color: #f472b6; }
+        .control-group {
+            margin-bottom: 12px;
+        }
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+        select:focus { outline: none; border-color: #34d399; }
+        select option { background: #1a1a2e; }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn-option {
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .btn-option.active {
+            background: rgba(52,211,153,0.3);
+            border-color: #34d399;
+            color: #34d399;
+        }
+        .btn-option:hover:not(.active) { background: rgba(255,255,255,0.1); }
+        .item-count {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .item-count button {
+            width: 30px;
+            height: 30px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .item-count span { font-size: 14px; color: #34d399; min-width: 20px; text-align: center; }
+        .code-output {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            color: #e0e0e0;
+            word-break: break-all;
+            line-height: 1.5;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .code-label {
+            color: #a78bfa;
+        }
+        .code-value {
+            color: #34d399;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Flexbox / Grid 可视化</h1>
+        <div class="tabs">
+            <div class="tab active" data-tab="flexbox">Flexbox</div>
+            <div class="tab" data-tab="grid">Grid</div>
+        </div>
+        <div class="main-layout">
+            <div class="panel">
+                <div class="demo-container" id="demo"></div>
+            </div>
+            <div>
+                <div class="panel" style="margin-bottom:15px;">
+                    <h3>项目数量</h3>
+                    <div class="item-count">
+                        <button id="removeItem">-</button>
+                        <span id="itemCount">3</span>
+                        <button id="addItem">+</button>
+                    </div>
+                </div>
+                <div class="panel" id="flexControls">
+                    <h3>Flexbox 属性</h3>
+                    <div class="control-group">
+                        <label>flex-direction</label>
+                        <div class="btn-group">
+                            <div class="btn-option active" data-prop="flexDirection" data-value="row">row</div>
+                            <div class="btn-option" data-prop="flexDirection" data-value="row-reverse">row-reverse</div>
+                            <div class="btn-option" data-prop="flexDirection" data-value="column">column</div>
+                            <div class="btn-option" data-prop="flexDirection" data-value="column-reverse">column-reverse</div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>flex-wrap</label>
+                        <div class="btn-group">
+                            <div class="btn-option active" data-prop="flexWrap" data-value="nowrap">nowrap</div>
+                            <div class="btn-option" data-prop="flexWrap" data-value="wrap">wrap</div>
+                            <div class="btn-option" data-prop="flexWrap" data-value="wrap-reverse">wrap-reverse</div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>justify-content</label>
+                        <div class="btn-group">
+                            <div class="btn-option active" data-prop="justifyContent" data-value="flex-start">flex-start</div>
+                            <div class="btn-option" data-prop="justifyContent" data-value="flex-end">flex-end</div>
+                            <div class="btn-option" data-prop="justifyContent" data-value="center">center</div>
+                            <div class="btn-option" data-prop="justifyContent" data-value="space-between">space-between</div>
+                            <div class="btn-option" data-prop="justifyContent" data-value="space-around">space-around</div>
+                            <div class="btn-option" data-prop="justifyContent" data-value="space-evenly">space-evenly</div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>align-items</label>
+                        <div class="btn-group">
+                            <div class="btn-option" data-prop="alignItems" data-value="flex-start">flex-start</div>
+                            <div class="btn-option" data-prop="alignItems" data-value="flex-end">flex-end</div>
+                            <div class="btn-option active" data-prop="alignItems" data-value="center">center</div>
+                            <div class="btn-option" data-prop="alignItems" data-value="stretch">stretch</div>
+                            <div class="btn-option" data-prop="alignItems" data-value="baseline">baseline</div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>align-content</label>
+                        <div class="btn-group">
+                            <div class="btn-option active" data-prop="alignContent" data-value="normal">normal</div>
+                            <div class="btn-option" data-prop="alignContent" data-value="flex-start">flex-start</div>
+                            <div class="btn-option" data-prop="alignContent" data-value="center">center</div>
+                            <div class="btn-option" data-prop="alignContent" data-value="flex-end">flex-end</div>
+                            <div class="btn-option" data-prop="alignContent" data-value="space-between">space-between</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel" id="gridControls" style="display:none;">
+                    <h3>Grid 属性</h3>
+                    <div class="control-group">
+                        <label>grid-template-columns</label>
+                        <select id="gridCols">
+                            <option value="repeat(3, 1fr)">repeat(3, 1fr)</option>
+                            <option value="repeat(2, 1fr)">repeat(2, 1fr)</option>
+                            <option value="1fr 2fr 1fr">1fr 2fr 1fr</option>
+                            <option value="repeat(auto-fit, minmax(100px, 1fr))">auto-fit</option>
+                            <option value="200px 1fr 200px">200px 1fr 200px</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>grid-template-rows</label>
+                        <select id="gridRows">
+                            <option value="auto">auto</option>
+                            <option value="repeat(2, 1fr)">repeat(2, 1fr)</option>
+                            <option value="100px auto 100px">100px auto 100px</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>gap</label>
+                        <div class="btn-group">
+                            <div class="btn-option active" data-prop="gap" data-value="10px">10px</div>
+                            <div class="btn-option" data-prop="gap" data-value="20px">20px</div>
+                            <div class="btn-option" data-prop="gap" data-value="30px">30px</div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>justify-items</label>
+                        <div class="btn-group">
+                            <div class="btn-option active" data-prop="justifyItems" data-value="stretch">stretch</div>
+                            <div class="btn-option" data-prop="justifyItems" data-value="start">start</div>
+                            <div class="btn-option" data-prop="justifyItems" data-value="center">center</div>
+                            <div class="btn-option" data-prop="justifyItems" data-value="end">end</div>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>align-items</label>
+                        <div class="btn-group">
+                            <div class="btn-option active" data-prop="alignItems" data-value="stretch">stretch</div>
+                            <div class="btn-option" data-prop="alignItems" data-value="start">start</div>
+                            <div class="btn-option" data-prop="alignItems" data-value="center">center</div>
+                            <div class="btn-option" data-prop="alignItems" data-value="end">end</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel" style="margin-top:15px;">
+                    <h3>CSS 代码</h3>
+                    <div class="code-output" id="codeOutput"></div>
+                    <button class="btn-option" id="copyBtn" style="width:100%;margin-top:10px;text-align:center;">复制代码</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let mode = 'flexbox';
+        let itemCount = 3;
+        const flexProps = {
+            flexDirection: 'row',
+            flexWrap: 'nowrap',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            alignContent: 'normal'
+        };
+        const gridProps = {
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateRows: 'auto',
+            gap: '10px',
+            justifyItems: 'stretch',
+            alignItems: 'stretch'
+        };
+
+        function render() {
+            const demo = document.getElementById('demo');
+            let items = '';
+            for (let i = 1; i <= itemCount; i++) {
+                const heights = [60, 80, 50, 70, 90, 65];
+                items += `<div class="demo-item item-${(i - 1) % 6 + 1}" style="height:${heights[(i - 1) % 6]}px;">${i}</div>`;
+            }
+            demo.innerHTML = items;
+
+            if (mode === 'flexbox') {
+                demo.style.display = 'flex';
+                demo.style.flexDirection = flexProps.flexDirection;
+                demo.style.flexWrap = flexProps.flexWrap;
+                demo.style.justifyContent = flexProps.justifyContent;
+                demo.style.alignItems = flexProps.alignItems;
+                demo.style.alignContent = flexProps.alignContent;
+                demo.style.gap = '10px';
+                delete demo.style.gridTemplateColumns;
+                delete demo.style.gridTemplateRows;
+                delete demo.style.justifyItems;
+            } else {
+                demo.style.display = 'grid';
+                demo.style.gridTemplateColumns = gridProps.gridTemplateColumns;
+                demo.style.gridTemplateRows = gridProps.gridTemplateRows;
+                demo.style.gap = gridProps.gap;
+                demo.style.justifyItems = gridProps.justifyItems;
+                demo.style.alignItems = gridProps.alignItems;
+                delete demo.style.flexDirection;
+                delete demo.style.flexWrap;
+                delete demo.style.justifyContent;
+                delete demo.style.alignContent;
+            }
+
+            updateCode();
+        }
+
+        function updateCode() {
+            const output = document.getElementById('codeOutput');
+            if (mode === 'flexbox') {
+                output.innerHTML = `<span class="code-label">.container</span> {
+  <span class="code-value">display: flex;</span>
+  <span class="code-value">flex-direction: ${flexProps.flexDirection};</span>
+  <span class="code-value">flex-wrap: ${flexProps.flexWrap};</span>
+  <span class="code-value">justify-content: ${flexProps.justifyContent};</span>
+  <span class="code-value">align-items: ${flexProps.alignItems};</span>
+  <span class="code-value">align-content: ${flexProps.alignContent};</span>
+}`;
+            } else {
+                output.innerHTML = `<span class="code-label">.container</span> {
+  <span class="code-value">display: grid;</span>
+  <span class="code-value">grid-template-columns: ${gridProps.gridTemplateColumns};</span>
+  <span class="code-value">grid-template-rows: ${gridProps.gridTemplateRows};</span>
+  <span class="code-value">gap: ${gridProps.gap};</span>
+  <span class="code-value">justify-items: ${gridProps.justifyItems};</span>
+  <span class="code-value">align-items: ${gridProps.alignItems};</span>
+}`;
+            }
+        }
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                mode = tab.dataset.tab;
+                document.getElementById('flexControls').style.display = mode === 'flexbox' ? 'block' : 'none';
+                document.getElementById('gridControls').style.display = mode === 'grid' ? 'block' : 'none';
+                render();
+            });
+        });
+
+        document.getElementById('addItem').addEventListener('click', () => {
+            if (itemCount < 12) { itemCount++; document.getElementById('itemCount').textContent = itemCount; render(); }
+        });
+        document.getElementById('removeItem').addEventListener('click', () => {
+            if (itemCount > 1) { itemCount--; document.getElementById('itemCount').textContent = itemCount; render(); }
+        });
+
+        document.querySelectorAll('.btn-option[data-prop]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const prop = btn.dataset.prop;
+                const value = btn.dataset.value;
+                btn.parentElement.querySelectorAll('.btn-option').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (mode === 'flexbox' && flexProps.hasOwnProperty(prop)) {
+                    flexProps[prop] = value;
+                } else if (gridProps.hasOwnProperty(prop)) {
+                    gridProps[prop] = value;
+                }
+                render();
+            });
+        });
+
+        document.getElementById('gridCols').addEventListener('change', (e) => {
+            gridProps.gridTemplateColumns = e.target.value;
+            render();
+        });
+        document.getElementById('gridRows').addEventListener('change', (e) => {
+            gridProps.gridTemplateRows = e.target.value;
+            render();
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            navigator.clipboard.writeText(document.getElementById('codeOutput').textContent).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.textContent = '已复制!';
+                setTimeout(() => btn.textContent = '复制代码', 1500);
+            });
+        });
+
+        render();
+    </script>
+</body>
+</html>

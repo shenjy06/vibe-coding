@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片拼接工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #34d399, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .panel h3 {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 15px;
+        }
+        .upload-area {
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover { border-color: #34d399; background: rgba(52,211,153,0.1); }
+        .upload-icon { font-size: 48px; margin-bottom: 10px; }
+        .upload-text { color: #888; font-size: 14px; }
+        #fileInput { display: none; }
+        .image-list {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .image-item {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .image-item .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 24px;
+            height: 24px;
+            background: rgba(239,68,68,0.8);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .controls-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+        .control-group label {
+            display: block;
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+        select, input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+        select:focus, input:focus { outline: none; border-color: #34d399; }
+        select option { background: #1a1a2e; }
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(52,211,153,0.4); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #ccc;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .preview-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            overflow: auto;
+            max-height: 600px;
+        }
+        #previewCanvas {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .drag-handle {
+            cursor: move;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>图片拼接工具</h1>
+        <div class="panel">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">🖼️</div>
+                <div class="upload-text">拖拽多张图片到这里，或点击上传</div>
+                <div class="upload-text" style="font-size:12px;color:#666;margin-top:8px;">支持 JPG、PNG、WebP 格式</div>
+                <input type="file" id="fileInput" accept="image/*" multiple>
+            </div>
+            <div class="image-list" id="imageList"></div>
+        </div>
+        <div class="panel">
+            <h3>拼接设置</h3>
+            <div class="controls-row">
+                <div class="control-group">
+                    <label>拼接方向</label>
+                    <select id="direction">
+                        <option value="vertical">垂直拼接（上下）</option>
+                        <option value="horizontal">水平拼接（左右）</option>
+                        <option value="grid">网格拼接</option>
+                    </select>
+                </div>
+                <div class="control-group" id="gridColsGroup" style="display:none;">
+                    <label>每行列数</label>
+                    <input type="number" id="gridCols" value="2" min="1" max="10">
+                </div>
+                <div class="control-group">
+                    <label>间距 (px)</label>
+                    <input type="number" id="spacing" value="0" min="0" max="100">
+                </div>
+                <div class="control-group">
+                    <label>背景颜色</label>
+                    <input type="color" id="bgColor" value="#ffffff" style="width:100%;height:36px;border:none;border-radius:6px;cursor:pointer;">
+                </div>
+                <div class="control-group">
+                    <label>统一宽度 (可选)</label>
+                    <input type="number" id="unifiedWidth" placeholder="留空保持原尺寸" min="0">
+                </div>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" id="mergeBtn">合并图片</button>
+                <button class="btn btn-secondary" id="clearBtn">清空全部</button>
+            </div>
+        </div>
+        <div class="panel" id="resultPanel" style="display:none;">
+            <h3>拼接结果</h3>
+            <div class="preview-container">
+                <canvas id="previewCanvas"></canvas>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" id="downloadBtn">下载拼接图片</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const imageList = document.getElementById('imageList');
+        const images = [];
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#34d399'; });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = 'rgba(255,255,255,0.2)'; });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = 'rgba(255,255,255,0.2)';
+            Array.from(e.dataTransfer.files).forEach(f => { if (f.type.startsWith('image/')) addImage(f); });
+        });
+        fileInput.addEventListener('change', (e) => {
+            Array.from(e.target.files).forEach(f => { if (f.type.startsWith('image/')) addImage(f); });
+            fileInput.value = '';
+        });
+
+        function addImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    images.push({ img, name: file.name });
+                    renderImageList();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function renderImageList() {
+            imageList.innerHTML = images.map((item, i) => `
+                <div class="image-item">
+                    <img src="${item.img.src}" alt="${item.name}">
+                    <button class="remove-btn" data-index="${i}">×</button>
+                </div>
+            `).join('');
+
+            imageList.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    images.splice(parseInt(btn.dataset.index), 1);
+                    renderImageList();
+                });
+            });
+        }
+
+        document.getElementById('direction').addEventListener('change', (e) => {
+            document.getElementById('gridColsGroup').style.display = e.target.value === 'grid' ? 'block' : 'none';
+        });
+
+        document.getElementById('mergeBtn').addEventListener('click', () => {
+            if (images.length === 0) return alert('请先添加图片');
+
+            const direction = document.getElementById('direction').value;
+            const spacing = parseInt(document.getElementById('spacing').value) || 0;
+            const bgColor = document.getElementById('bgColor').value;
+            const unifiedWidth = parseInt(document.getElementById('unifiedWidth').value) || 0;
+            const gridCols = parseInt(document.getElementById('gridCols').value) || 2;
+
+            const canvas = document.getElementById('previewCanvas');
+            const ctx = canvas.getContext('2d');
+
+            let processedImages = images.map(item => {
+                let w = item.img.width, h = item.img.height;
+                if (unifiedWidth > 0) {
+                    const ratio = unifiedWidth / w;
+                    w = unifiedWidth;
+                    h = Math.round(h * ratio);
+                }
+                return { img: item.img, w, h };
+            });
+
+            let totalW, totalH;
+            if (direction === 'vertical') {
+                totalW = Math.max(...processedImages.map(i => i.w));
+                totalH = processedImages.reduce((sum, i) => sum + i.h, 0) + spacing * (images.length - 1);
+            } else if (direction === 'horizontal') {
+                totalW = processedImages.reduce((sum, i) => sum + i.w, 0) + spacing * (images.length - 1);
+                totalH = Math.max(...processedImages.map(i => i.h));
+            } else {
+                const rows = Math.ceil(images.length / gridCols);
+                const colWidths = Array(gridCols).fill(0);
+                const rowHeights = Array(rows).fill(0);
+                processedImages.forEach((item, i) => {
+                    const col = i % gridCols;
+                    const row = Math.floor(i / gridCols);
+                    colWidths[col] = Math.max(colWidths[col], item.w);
+                    rowHeights[row] = Math.max(rowHeights[row], item.h);
+                });
+                totalW = colWidths.reduce((s, w) => s + w, 0) + spacing * (gridCols - 1);
+                totalH = rowHeights.reduce((s, h) => s + h, 0) + spacing * (rows - 1);
+            }
+
+            canvas.width = totalW;
+            canvas.height = totalH;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, totalW, totalH);
+
+            let x = 0, y = 0;
+            if (direction === 'vertical') {
+                processedImages.forEach((item, i) => {
+                    const offsetX = (totalW - item.w) / 2;
+                    ctx.drawImage(item.img, offsetX, y, item.w, item.h);
+                    y += item.h + spacing;
+                });
+            } else if (direction === 'horizontal') {
+                processedImages.forEach((item, i) => {
+                    const offsetY = (totalH - item.h) / 2;
+                    ctx.drawImage(item.img, x, offsetY, item.w, item.h);
+                    x += item.w + spacing;
+                });
+            } else {
+                const rows = Math.ceil(images.length / gridCols);
+                const colWidths = Array(gridCols).fill(0);
+                const rowHeights = Array(rows).fill(0);
+                processedImages.forEach((item, i) => {
+                    const col = i % gridCols;
+                    const row = Math.floor(i / gridCols);
+                    colWidths[col] = Math.max(colWidths[col], item.w);
+                    rowHeights[row] = Math.max(rowHeights[row], item.h);
+                });
+
+                let gx = 0, gy = 0;
+                processedImages.forEach((item, i) => {
+                    const col = i % gridCols;
+                    const row = Math.floor(i / gridCols);
+                    const cellW = colWidths[col];
+                    const cellH = rowHeights[row];
+                    const offsetX = (cellW - item.w) / 2;
+                    const offsetY = (cellH - item.h) / 2;
+                    ctx.drawImage(item.img, gx + offsetX, gy + offsetY, item.w, item.h);
+                    gx += cellW + spacing;
+                    if (col === gridCols - 1) {
+                        gx = 0;
+                        gy += cellH + spacing;
+                    }
+                });
+            }
+
+            document.getElementById('resultPanel').style.display = 'block';
+            document.getElementById('resultPanel').scrollIntoView({ behavior: 'smooth' });
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const canvas = document.getElementById('previewCanvas');
+            const link = document.createElement('a');
+            link.download = 'merged.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            images.length = 0;
+            renderImageList();
+            document.getElementById('resultPanel').style.display = 'none';
+        });
+    </script>
+</body>
+</html>

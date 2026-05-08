@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>证件照制作工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #e2e2e2, #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            color: #aaa;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            text-align: center;
+            padding: 60px 20px;
+            cursor: pointer;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            color: #888;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* Editor */
+        .editor-container {
+            display: none;
+            position: relative;
+        }
+
+        .editor-container.visible {
+            display: block;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+        }
+
+        #editorCanvas {
+            max-width: 100%;
+            max-height: 500px;
+        }
+
+        /* Crop Overlay */
+        .crop-overlay {
+            position: absolute;
+            border: 2px dashed #fff;
+            cursor: move;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        }
+
+        .crop-overlay::before,
+        .crop-overlay::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .crop-overlay::before {
+            width: 1px;
+            height: 100%;
+            left: 33.33%;
+            top: 0;
+            box-shadow: calc(100% / 3) 0 0 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .crop-overlay::after {
+            width: 100%;
+            height: 1px;
+            top: 33.33%;
+            left: 0;
+            box-shadow: 0 calc(100% / 3) 0 0 rgba(255, 255, 255, 0.3);
+        }
+
+        /* Sidebar Controls */
+        .controls-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            margin-bottom: 5px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        /* Size Buttons */
+        .size-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .size-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ccc;
+            padding: 10px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .size-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .size-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: #fff;
+        }
+
+        .size-btn .size-name {
+            font-weight: 600;
+            display: block;
+        }
+
+        .size-btn .size-dim {
+            font-size: 11px;
+            color: inherit;
+            opacity: 0.7;
+        }
+
+        /* Color Buttons */
+        .color-grid {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .color-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .color-btn.active {
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        .color-btn.active::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .color-white { background: #ffffff; }
+        .color-blue { background: #438edb; }
+        .color-red { background: #d03c3c; }
+
+        .color-custom-wrapper {
+            position: relative;
+        }
+
+        .color-custom-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .color-custom-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px dashed rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        /* Slider */
+        .slider-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-control input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .slider-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            min-width: 35px;
+            text-align: right;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(56, 239, 125, 0.3);
+        }
+
+        /* Preview Section */
+        .preview-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .preview-section.visible {
+            display: block;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .preview-header h3 {
+            margin: 0;
+        }
+
+        .print-layout {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            display: inline-block;
+        }
+
+        #printCanvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Erase Tool */
+        .erase-tools {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .erase-btn {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ccc;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .erase-btn:hover,
+        .erase-btn.active {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: #ef4444;
+            color: #fff;
+        }
+
+        .tip-text {
+            font-size: 11px;
+            color: #666;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        /* Custom Size Inputs */
+        .custom-size-inputs {
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .custom-size-inputs.visible {
+            display: grid;
+        }
+
+        .custom-size-inputs input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .custom-size-inputs input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .custom-size-inputs label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .custom-size-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Print layout options */
+        .layout-options {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .layout-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ccc;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .layout-btn:hover,
+        .layout-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: #fff;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #aaa;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .checkbox-label input {
+            accent-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 证件照制作工具</h1>
+
+        <!-- Upload -->
+        <div class="card" id="uploadCard">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">👤</div>
+                <div class="upload-text">拖拽照片到这里，或点击上传</div>
+                <div class="upload-text" style="font-size:13px;color:#666;margin-top:8px;">建议使用正面免冠照片</div>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+        </div>
+
+        <!-- Editor -->
+        <div class="main-layout" id="editorLayout" style="display:none;">
+            <div class="card">
+                <div class="editor-container visible">
+                    <div class="canvas-wrapper" id="canvasWrapper">
+                        <canvas id="editorCanvas"></canvas>
+                        <div class="crop-overlay" id="cropOverlay" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-sidebar">
+                <!-- Size -->
+                <div class="card">
+                    <h3>证件照尺寸</h3>
+                    <div class="control-group">
+                        <div class="size-grid">
+                            <button class="size-btn active" data-size="one-inch">
+                                <span class="size-name">一寸</span>
+                                <span class="size-dim">25×35mm</span>
+                            </button>
+                            <button class="size-btn" data-size="two-inch">
+                                <span class="size-name">二寸</span>
+                                <span class="size-dim">35×49mm</span>
+                            </button>
+                            <button class="size-btn" data-size="small-one">
+                                <span class="size-name">小一寸</span>
+                                <span class="size-dim">22×32mm</span>
+                            </button>
+                            <button class="size-btn" data-size="small-two">
+                                <span class="size-name">小二寸</span>
+                                <span class="size-dim">35×45mm</span>
+                            </button>
+                            <button class="size-btn" data-size="passport">
+                                <span class="size-name">护照</span>
+                                <span class="size-dim">33×48mm</span>
+                            </button>
+                            <button class="size-btn" data-size="custom">
+                                <span class="size-name">自定义</span>
+                                <span class="size-dim">手动输入</span>
+                            </button>
+                        </div>
+                        <div class="custom-size-inputs" id="customSizeInputs">
+                            <div class="custom-size-group">
+                                <label>宽度 (mm)</label>
+                                <input type="number" id="customWidth" value="25" min="10" max="200">
+                            </div>
+                            <div class="custom-size-group">
+                                <label>高度 (mm)</label>
+                                <input type="number" id="customHeight" value="35" min="10" max="200">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Background -->
+                <div class="card">
+                    <h3>背景颜色</h3>
+                    <div class="control-group">
+                        <div class="color-grid">
+                            <div class="color-btn color-white active" data-color="#ffffff" title="白色"></div>
+                            <div class="color-btn color-blue" data-color="#438edb" title="蓝色"></div>
+                            <div class="color-btn color-red" data-color="#d03c3c" title="红色"></div>
+                            <div class="color-custom-wrapper">
+                                <div class="color-custom-btn" title="自定义颜色">🎨</div>
+                                <input type="color" class="color-custom-input" id="customColor" value="#ffffff">
+                            </div>
+                        </div>
+                        <div class="tip-text">点击颜色更换背景，使用擦除工具去除原背景</div>
+                    </div>
+
+                    <div class="erase-tools">
+                        <button class="erase-btn" id="eraseBtn">🧹 擦除背景</button>
+                        <button class="erase-btn" id="restoreBtn">↩️ 恢复原图</button>
+                    </div>
+                </div>
+
+                <!-- Adjustments -->
+                <div class="card">
+                    <h3>调整</h3>
+                    <div class="control-group">
+                        <label>亮度</label>
+                        <div class="slider-control">
+                            <input type="range" id="brightness" min="-100" max="100" value="0">
+                            <span class="slider-value" id="brightnessVal">0</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>对比度</label>
+                        <div class="slider-control">
+                            <input type="range" id="contrast" min="-100" max="100" value="0">
+                            <span class="slider-value" id="contrastVal">0</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>缩放</label>
+                        <div class="slider-control">
+                            <input type="range" id="scale" min="50" max="200" value="100">
+                            <span class="slider-value" id="scaleVal">100%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="card">
+                    <h3>操作</h3>
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" id="generateBtn">生成证件照</button>
+                        <button class="btn btn-secondary" id="resetBtn">重新上传</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result & Print Layout -->
+        <div class="preview-section" id="previewSection">
+            <div class="card">
+                <div class="preview-header">
+                    <h3>证件照预览</h3>
+                    <button class="btn btn-primary" id="downloadSingle">下载单张</button>
+                </div>
+                <div style="text-align:center;">
+                    <canvas id="resultCanvas" style="max-width:300px;border:1px solid rgba(255,255,255,0.1);border-radius:4px;"></canvas>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:20px;">
+                <div class="preview-header">
+                    <h3>排版打印</h3>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showCutLine" checked>
+                            显示裁剪线
+                        </label>
+                        <button class="btn btn-success" id="downloadLayout">下载排版</button>
+                    </div>
+                </div>
+                <div class="layout-options">
+                    <button class="layout-btn active" data-layout="1x8">1寸×8</button>
+                    <button class="layout-btn" data-layout="2x4">2寸×4</button>
+                    <button class="layout-btn" data-layout="custom">自定义</button>
+                </div>
+                <div class="print-layout">
+                    <canvas id="printCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Preset sizes (mm)
+        const SIZES = {
+            'one-inch':   { w: 25, h: 35, name: '一寸' },
+            'two-inch':   { w: 35, h: 49, name: '二寸' },
+            'small-one':  { w: 22, h: 32, name: '小一寸' },
+            'small-two':  { w: 35, h: 45, name: '小二寸' },
+            'passport':   { w: 33, h: 48, name: '护照' },
+        };
+
+        const PRINT_LAYOUTS = {
+            '1x8': { cols: 4, rows: 2 },
+            '2x4': { cols: 2, rows: 2 },
+        };
+
+        // State
+        let originalImage = null;
+        let currentSize = 'one-inch';
+        let currentColor = '#ffffff';
+        let isErasing = false;
+        let isRestoring = false;
+        let eraseRadius = 20;
+        let isDraggingCrop = false;
+        let cropStartX, cropStartY;
+        let imageOffsetX = 0, imageOffsetY = 0;
+        let imageScale = 1;
+        let brightness = 0, contrast = 0;
+        let generatedPhoto = null;
+        let currentLayout = '1x8';
+
+        // DOM
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const editorLayout = document.getElementById('editorLayout');
+        const uploadCard = document.getElementById('uploadCard');
+        const canvas = document.getElementById('editorCanvas');
+        const ctx = canvas.getContext('2d');
+        const cropOverlay = document.getElementById('cropOverlay');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const previewSection = document.getElementById('previewSection');
+        const resultCanvas = document.getElementById('resultCanvas');
+        const printCanvas = document.getElementById('printCanvas');
+
+        // Upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImage = new Image();
+                originalImage.onload = () => {
+                    uploadCard.style.display = 'none';
+                    editorLayout.style.display = 'grid';
+                    initEditor();
+                };
+                originalImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function initEditor() {
+            const wrapperW = canvasWrapper.clientWidth;
+            const wrapperH = 500;
+            const imgRatio = originalImage.width / originalImage.height;
+            const wrapperRatio = wrapperW / wrapperH;
+
+            if (imgRatio > wrapperRatio) {
+                canvas.width = wrapperW;
+                canvas.height = wrapperW / imgRatio;
+            } else {
+                canvas.height = wrapperH;
+                canvas.width = wrapperH * imgRatio;
+            }
+
+            imageScale = 1;
+            imageOffsetX = 0;
+            imageOffsetY = 0;
+
+            drawImage();
+            updateCropOverlay();
+        }
+
+        function drawImage() {
+            const size = getCurrentSize();
+            const aspectRatio = size.w / size.h;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background
+            ctx.fillStyle = currentColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Calculate image draw area
+            let drawW = canvas.width * imageScale;
+            let drawH = drawW / (originalImage.width / originalImage.height);
+            if (drawH < canvas.height * imageScale) {
+                drawH = canvas.height * imageScale;
+                drawW = drawH * (originalImage.width / originalImage.height);
+            }
+
+            const x = (canvas.width - drawW) / 2 + imageOffsetX;
+            const y = (canvas.height - drawH) / 2 + imageOffsetY;
+
+            // Apply brightness/contrast
+            ctx.save();
+            ctx.filter = `brightness(${100 + brightness}%) contrast(${100 + contrast}%)`;
+            ctx.drawImage(originalImage, x, y, drawW, drawH);
+            ctx.restore();
+        }
+
+        function getCurrentSize() {
+            if (currentSize === 'custom') {
+                return {
+                    w: parseInt(document.getElementById('customWidth').value) || 25,
+                    h: parseInt(document.getElementById('customHeight').value) || 35
+                };
+            }
+            return SIZES[currentSize];
+        }
+
+        function updateCropOverlay() {
+            const size = getCurrentSize();
+            const aspectRatio = size.w / size.h;
+            const canvasRect = canvas.getBoundingClientRect();
+            const wrapperRect = canvasWrapper.getBoundingClientRect();
+
+            let cropW, cropH;
+            if (canvasRect.width / canvasRect.height > aspectRatio) {
+                cropH = canvasRect.height * 0.8;
+                cropW = cropH * aspectRatio;
+            } else {
+                cropW = canvasRect.width * 0.8;
+                cropH = cropW / aspectRatio;
+            }
+
+            const left = (canvasRect.left - wrapperRect.left) + (canvasRect.width - cropW) / 2;
+            const top = (canvasRect.top - wrapperRect.top) + (canvasRect.height - cropH) / 2;
+
+            cropOverlay.style.display = 'block';
+            cropOverlay.style.width = cropW + 'px';
+            cropOverlay.style.height = cropH + 'px';
+            cropOverlay.style.left = left + 'px';
+            cropOverlay.style.top = top + 'px';
+        }
+
+        // Size buttons
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSize = btn.dataset.size;
+                document.getElementById('customSizeInputs').classList.toggle('visible', currentSize === 'custom');
+                updateCropOverlay();
+            });
+        });
+
+        // Custom size inputs
+        document.getElementById('customWidth').addEventListener('input', updateCropOverlay);
+        document.getElementById('customHeight').addEventListener('input', updateCropOverlay);
+
+        // Color buttons
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentColor = btn.dataset.color;
+                drawImage();
+            });
+        });
+
+        document.getElementById('customColor').addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            drawImage();
+        });
+
+        // Erase/Restore
+        document.getElementById('eraseBtn').addEventListener('click', () => {
+            isErasing = !isErasing;
+            isRestoring = false;
+            document.getElementById('eraseBtn').classList.toggle('active', isErasing);
+            document.getElementById('restoreBtn').classList.remove('active');
+            canvas.style.cursor = isErasing ? 'crosshair' : 'default';
+        });
+
+        document.getElementById('restoreBtn').addEventListener('click', () => {
+            isRestoring = !isRestoring;
+            isErasing = false;
+            document.getElementById('restoreBtn').classList.toggle('active', isRestoring);
+            document.getElementById('eraseBtn').classList.remove('active');
+            canvas.style.cursor = isRestoring ? 'crosshair' : 'default';
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isErasing && !isRestoring) return;
+            if (e.buttons !== 1) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            ctx.save();
+            if (isErasing) {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                ctx.arc(x, y, eraseRadius, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.filter = `brightness(${100 + brightness}%) contrast(${100 + contrast}%)`;
+                ctx.beginPath();
+                ctx.arc(x, y, eraseRadius, 0, Math.PI * 2);
+                ctx.clip();
+                const drawW = canvas.width * imageScale;
+                const drawH = drawW * (originalImage.height / originalImage.width);
+                const dx = (canvas.width - drawW) / 2 + imageOffsetX;
+                const dy = (canvas.height - drawH) / 2 + imageOffsetY;
+                ctx.drawImage(originalImage, dx, dy, drawW, drawH);
+            }
+            ctx.restore();
+        });
+
+        // Sliders
+        document.getElementById('brightness').addEventListener('input', (e) => {
+            brightness = parseInt(e.target.value);
+            document.getElementById('brightnessVal').textContent = brightness;
+            drawImage();
+        });
+
+        document.getElementById('contrast').addEventListener('input', (e) => {
+            contrast = parseInt(e.target.value);
+            document.getElementById('contrastVal').textContent = contrast;
+            drawImage();
+        });
+
+        document.getElementById('scale').addEventListener('input', (e) => {
+            imageScale = parseInt(e.target.value) / 100;
+            document.getElementById('scaleVal').textContent = e.target.value + '%';
+            drawImage();
+        });
+
+        // Crop drag
+        cropOverlay.addEventListener('mousedown', (e) => {
+            isDraggingCrop = true;
+            cropStartX = e.clientX - imageOffsetX;
+            cropStartY = e.clientY - imageOffsetY;
+            cropOverlay.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDraggingCrop) return;
+            imageOffsetX = e.clientX - cropStartX;
+            imageOffsetY = e.clientY - cropStartY;
+            drawImage();
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDraggingCrop = false;
+            cropOverlay.style.cursor = 'move';
+        });
+
+        // Generate
+        document.getElementById('generateBtn').addEventListener('click', generatePhoto);
+
+        function generatePhoto() {
+            const size = getCurrentSize();
+            const DPI = 300;
+            const pxW = Math.round(size.w / 25.4 * DPI);
+            const pxH = Math.round(size.h / 25.4 * DPI);
+
+            const resultCtx = resultCanvas.getContext('2d');
+            resultCanvas.width = pxW;
+            resultCanvas.height = pxH;
+
+            // Get crop area from editor canvas
+            const cropRect = cropOverlay.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+
+            const relX = (cropRect.left - canvasRect.left) / canvasRect.width;
+            const relY = (cropRect.top - canvasRect.top) / canvasRect.height;
+            const relW = cropRect.width / canvasRect.width;
+            const relH = cropRect.height / canvasRect.height;
+
+            const srcX = relX * canvas.width;
+            const srcY = relY * canvas.height;
+            const srcW = relW * canvas.width;
+            const srcH = relH * canvas.height;
+
+            // Draw background
+            resultCtx.fillStyle = currentColor;
+            resultCtx.fillRect(0, 0, pxW, pxH);
+
+            // Draw cropped area
+            resultCtx.drawImage(canvas, srcX, srcY, srcW, srcH, 0, 0, pxW, pxH);
+
+            generatedPhoto = resultCanvas;
+            previewSection.classList.add('visible');
+            renderPrintLayout();
+
+            previewSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Print Layout
+        document.querySelectorAll('.layout-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLayout = btn.dataset.layout;
+                renderPrintLayout();
+            });
+        });
+
+        document.getElementById('showCutLine').addEventListener('change', renderPrintLayout);
+
+        function renderPrintLayout() {
+            if (!generatedPhoto) return;
+
+            const DPI = 300;
+            const A4_W = Math.round(210 / 25.4 * DPI);
+            const A4_H = Math.round(297 / 25.4 * DPI);
+
+            let cols, rows;
+            if (currentLayout === 'custom') {
+                cols = 4;
+                rows = 3;
+            } else {
+                const layout = PRINT_LAYOUTS[currentLayout];
+                cols = layout.cols;
+                rows = layout.rows;
+            }
+
+            const displayScale = 0.15;
+            printCanvas.width = A4_W;
+            printCanvas.height = A4_H;
+            const printCtx = printCanvas.getContext('2d');
+
+            printCtx.fillStyle = '#ffffff';
+            printCtx.fillRect(0, 0, A4_W, A4_H);
+
+            const photoW = A4_W / cols;
+            const photoH = A4_H / rows;
+            const margin = 10;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const x = c * photoW + margin;
+                    const y = r * photoH + margin;
+                    const w = photoW - margin * 2;
+                    const h = photoH - margin * 2;
+
+                    printCtx.drawImage(generatedPhoto, x, y, w, h);
+
+                    if (document.getElementById('showCutLine').checked) {
+                        printCtx.strokeStyle = '#cccccc';
+                        printCtx.lineWidth = 2;
+                        printCtx.setLineDash([10, 5]);
+                        printCtx.strokeRect(x, y, w, h);
+                        printCtx.setLineDash([]);
+                    }
+                }
+            }
+
+            printCanvas.style.width = (A4_W * displayScale) + 'px';
+            printCanvas.style.height = (A4_H * displayScale) + 'px';
+        }
+
+        // Download single
+        document.getElementById('downloadSingle').addEventListener('click', () => {
+            if (!generatedPhoto) return;
+            const link = document.createElement('a');
+            link.download = '证件照.png';
+            link.href = generatedPhoto.toDataURL('image/png');
+            link.click();
+        });
+
+        // Download layout
+        document.getElementById('downloadLayout').addEventListener('click', () => {
+            if (!generatedPhoto) return;
+            const link = document.createElement('a');
+            link.download = '证件照_排版.png';
+            link.href = printCanvas.toDataURL('image/png');
+            link.click();
+        });
+
+        // Reset
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            originalImage = null;
+            generatedPhoto = null;
+            previewSection.classList.remove('visible');
+            editorLayout.style.display = 'none';
+            uploadCard.style.display = 'block';
+            fileInput.value = '';
+        });
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            if (originalImage) {
+                initEditor();
+            }
+        });
+    </script>
+</body>
+</html>

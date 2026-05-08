@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>颜色转换器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #f472b6, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 800px) { .main-layout { grid-template-columns: 1fr; } }
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .panel h3 {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 15px;
+        }
+        .color-preview {
+            width: 100%;
+            height: 120px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .color-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        input[type="color"] {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+        }
+        input[type="text"], input[type="number"] {
+            flex: 1;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            outline: none;
+        }
+        input:focus { border-color: #a78bfa; }
+        .format-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .format-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .format-label {
+            width: 50px;
+            font-size: 12px;
+            color: #94a3b8;
+            text-align: right;
+        }
+        .format-value {
+            flex: 1;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .format-value:hover { border-color: #a78bfa; }
+        .copy-hint {
+            font-size: 11px;
+            color: #6b7280;
+        }
+        .slider-group {
+            margin-bottom: 15px;
+        }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .slider-label span {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #a78bfa;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .palette-section { margin-top: 20px; }
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            gap: 8px;
+        }
+        .palette-color {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .palette-color:hover {
+            transform: scale(1.1);
+            border-color: #fff;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(167,139,250,0.4); }
+        .random-btn {
+            background: linear-gradient(135deg, #f472b6, #a78bfa, #60a5fa);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>颜色转换器</h1>
+        <div class="main-layout">
+            <div>
+                <div class="panel">
+                    <h3>选择颜色</h3>
+                    <div class="color-preview" id="colorPreview"></div>
+                    <div class="color-input-group">
+                        <input type="color" id="colorPicker" value="#667eea">
+                        <input type="text" id="hexInput" value="#667eea" placeholder="#RRGGBB">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label"><span>R</span><span id="rValue">102</span></div>
+                        <input type="range" id="rSlider" min="0" max="255" value="102">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label"><span>G</span><span id="gValue">126</span></div>
+                        <input type="range" id="gSlider" min="0" max="255" value="126">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label"><span>B</span><span id="bValue">234</span></div>
+                        <input type="range" id="bSlider" min="0" max="255" value="234">
+                    </div>
+                    <button class="btn random-btn" id="randomBtn">随机颜色</button>
+                </div>
+            </div>
+            <div>
+                <div class="panel">
+                    <h3>颜色格式 <span class="copy-hint">(点击复制)</span></h3>
+                    <div class="format-list">
+                        <div class="format-item">
+                            <span class="format-label">HEX</span>
+                            <div class="format-value" id="hexValue" data-format="hex">#667eea</div>
+                        </div>
+                        <div class="format-item">
+                            <span class="format-label">RGB</span>
+                            <div class="format-value" id="rgbValue" data-format="rgb">rgb(102, 126, 234)</div>
+                        </div>
+                        <div class="format-item">
+                            <span class="format-label">HSL</span>
+                            <div class="format-value" id="hslValue" data-format="hsl">hsl(227, 76%, 66%)</div>
+                        </div>
+                        <div class="format-item">
+                            <span class="format-label">HSV</span>
+                            <div class="format-value" id="hsvValue" data-format="hsv">hsv(227, 56%, 92%)</div>
+                        </div>
+                        <div class="format-item">
+                            <span class="format-label">CMYK</span>
+                            <div class="format-value" id="cmykValue" data-format="cmyk">cmyk(56%, 46%, 0%, 8%)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel palette-section">
+                    <h3>调色板</h3>
+                    <div class="palette-grid" id="paletteGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const colorPicker = document.getElementById('colorPicker');
+        const hexInput = document.getElementById('hexInput');
+        const colorPreview = document.getElementById('colorPreview');
+        const rSlider = document.getElementById('rSlider');
+        const gSlider = document.getElementById('gSlider');
+        const bSlider = document.getElementById('bSlider');
+
+        function updateAll(hex) {
+            const rgb = hexToRgb(hex);
+            if (!rgb) return;
+
+            colorPicker.value = hex;
+            hexInput.value = hex;
+            colorPreview.style.background = hex;
+            rSlider.value = rgb.r;
+            gSlider.value = rgb.g;
+            bSlider.value = rgb.b;
+            document.getElementById('rValue').textContent = rgb.r;
+            document.getElementById('gValue').textContent = rgb.g;
+            document.getElementById('bValue').textContent = rgb.b;
+
+            document.getElementById('hexValue').textContent = hex;
+            document.getElementById('rgbValue').textContent = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+
+            const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+            document.getElementById('hslValue').textContent = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+
+            const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+            document.getElementById('hsvValue').textContent = `hsv(${hsv.h}, ${hsv.s}%, ${hsv.v}%)`;
+
+            const cmyk = rgbToCmyk(rgb.r, rgb.g, rgb.b);
+            document.getElementById('cmykValue').textContent = `cmyk(${cmyk.c}%, ${cmyk.m}%, ${cmyk.y}%, ${cmyk.k}%)`;
+        }
+
+        function hexToRgb(hex) {
+            const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+            return match ? {
+                r: parseInt(match[1], 16),
+                g: parseInt(match[2], 16),
+                b: parseInt(match[3], 16)
+            } : null;
+        }
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+        }
+
+        function rgbToHsv(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, v = max;
+            const d = max - min;
+            s = max === 0 ? 0 : d / max;
+            if (max === min) {
+                h = 0;
+            } else {
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return { h: Math.round(h * 360), s: Math.round(s * 100), v: Math.round(v * 100) };
+        }
+
+        function rgbToCmyk(r, g, b) {
+            if (r === 0 && g === 0 && b === 0) return { c: 0, m: 0, y: 0, k: 100 };
+            let c = 1 - r / 255, m = 1 - g / 255, y = 1 - b / 255;
+            const k = Math.min(c, m, y);
+            c = Math.round((c - k) / (1 - k) * 100);
+            m = Math.round((m - k) / (1 - k) * 100);
+            y = Math.round((y - k) / (1 - k) * 100);
+            return { c, m, y, k: Math.round(k * 100) };
+        }
+
+        colorPicker.addEventListener('input', (e) => updateAll(e.target.value));
+        hexInput.addEventListener('change', (e) => {
+            let hex = e.target.value;
+            if (!hex.startsWith('#')) hex = '#' + hex;
+            if (/^#[0-9a-f]{6}$/i.test(hex)) updateAll(hex);
+        });
+
+        [rSlider, gSlider, bSlider].forEach(slider => {
+            slider.addEventListener('input', () => {
+                const hex = rgbToHex(parseInt(rSlider.value), parseInt(gSlider.value), parseInt(bSlider.value));
+                updateAll(hex);
+            });
+        });
+
+        document.getElementById('randomBtn').addEventListener('click', () => {
+            const hex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+            updateAll(hex);
+        });
+
+        document.querySelectorAll('.format-value').forEach(el => {
+            el.addEventListener('click', () => {
+                navigator.clipboard.writeText(el.textContent).then(() => {
+                    const original = el.textContent;
+                    el.textContent = '已复制!';
+                    setTimeout(() => el.textContent = original, 1000);
+                });
+            });
+        });
+
+        // Generate palette
+        const paletteColors = [
+            '#FF6B6B', '#FF8E53', '#FFD93D', '#6BCB77', '#4D96FF', '#9B59B6',
+            '#FF6B6B', '#C0392B', '#E74C3C', '#FF9F43', '#FECA57', '#48DBFB',
+            '#0ABDE3', '#10AC84', '#1DD1A1', '#F368E0', '#FF6B81', '#EE5A24',
+            '#009432', '#0652DD', '#6F1E51', '#833471', '#FDA7DF', '#1289A7',
+            '#A3CB38', '#FFC312', '#F79F1F', '#EE5A24', '#EA2027', '#0652DD'
+        ];
+        document.getElementById('paletteGrid').innerHTML = paletteColors.map(c =>
+            `<div class="palette-color" style="background:${c};" data-color="${c}"></div>`
+        ).join('');
+
+        document.querySelectorAll('.palette-color').forEach(el => {
+            el.addEventListener('click', () => updateAll(el.dataset.color));
+        });
+
+        updateAll('#667eea');
+    </script>
+</body>
+</html>

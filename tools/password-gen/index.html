@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>密码生成器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #34d399, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        .password-display {
+            background: rgba(0,0,0,0.4);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .password-text {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 28px;
+            letter-spacing: 2px;
+            word-break: break-all;
+            color: #34d399;
+            min-height: 40px;
+        }
+        .password-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(52,211,153,0.4); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #ccc;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group label {
+            display: block;
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+        }
+        .length-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: #34d399;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .length-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #34d399;
+            min-width: 50px;
+            text-align: center;
+        }
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        @media (max-width: 500px) { .checkbox-group { grid-template-columns: 1fr; } }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .checkbox-item:hover { background: rgba(255,255,255,0.05); }
+        .checkbox-item.active { border-color: #34d399; background: rgba(52,211,153,0.1); }
+        .checkbox-item input { accent-color: #34d399; }
+        .checkbox-item .check-label { font-size: 14px; color: #e0e0e0; }
+        .checkbox-item .check-hint { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .strength-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .strength-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .strength-label {
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .batch-section {
+            margin-top: 20px;
+        }
+        .batch-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .batch-input input {
+            width: 80px;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 14px;
+            text-align: center;
+        }
+        .batch-result {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .password-item {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>密码生成器</h1>
+        <div class="panel">
+            <div class="password-display">
+                <div class="password-text" id="passwordText">点击生成密码</div>
+                <div class="password-actions">
+                    <button class="btn btn-primary" id="generateBtn">生成密码</button>
+                    <button class="btn btn-secondary" id="copyBtn">复制</button>
+                </div>
+            </div>
+            <div class="strength-bar">
+                <div class="strength-fill" id="strengthFill"></div>
+            </div>
+            <div class="strength-label" id="strengthLabel"></div>
+        </div>
+        <div class="panel">
+            <div class="control-group">
+                <label>密码长度: <span id="lengthDisplay">16</span></label>
+                <div class="length-control">
+                    <span style="color:#6b7280;">4</span>
+                    <input type="range" id="length" min="4" max="128" value="16">
+                    <span style="color:#6b7280;">128</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>字符类型</label>
+                <div class="checkbox-group">
+                    <label class="checkbox-item active">
+                        <input type="checkbox" id="uppercase" checked>
+                        <div>
+                            <div class="check-label">大写字母</div>
+                            <div class="check-hint">A-Z</div>
+                        </div>
+                    </label>
+                    <label class="checkbox-item active">
+                        <input type="checkbox" id="lowercase" checked>
+                        <div>
+                            <div class="check-label">小写字母</div>
+                            <div class="check-hint">a-z</div>
+                        </div>
+                    </label>
+                    <label class="checkbox-item active">
+                        <input type="checkbox" id="numbers" checked>
+                        <div>
+                            <div class="check-label">数字</div>
+                            <div class="check-hint">0-9</div>
+                        </div>
+                    </label>
+                    <label class="checkbox-item active">
+                        <input type="checkbox" id="symbols" checked>
+                        <div>
+                            <div class="check-label">特殊符号</div>
+                            <div class="check-hint">!@#$%^&*</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>排除字符</label>
+                <input type="text" id="excludeChars" placeholder="输入要排除的字符..." style="width:100%;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e0e0e0;font-size:14px;">
+            </div>
+        </div>
+        <div class="panel batch-section">
+            <h3 style="color:#94a3b8;margin-bottom:15px;">批量生成</h3>
+            <div class="batch-input">
+                <span style="color:#94a3b8;">数量:</span>
+                <input type="number" id="batchCount" value="5" min="1" max="50">
+                <button class="btn btn-primary" id="batchBtn">批量生成</button>
+                <button class="btn btn-secondary" id="copyAllBtn">复制全部</button>
+            </div>
+            <div class="batch-result" id="batchResult"></div>
+        </div>
+    </div>
+    <script>
+        const lengthSlider = document.getElementById('length');
+        const lengthDisplay = document.getElementById('lengthDisplay');
+        const passwordText = document.getElementById('passwordText');
+        const strengthFill = document.getElementById('strengthFill');
+        const strengthLabel = document.getElementById('strengthLabel');
+
+        const chars = {
+            uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+            lowercase: 'abcdefghijklmnopqrstuvwxyz',
+            numbers: '0123456789',
+            symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+        };
+
+        function generatePassword() {
+            const length = parseInt(lengthSlider.value);
+            const useUpper = document.getElementById('uppercase').checked;
+            const useLower = document.getElementById('lowercase').checked;
+            const useNumbers = document.getElementById('numbers').checked;
+            const useSymbols = document.getElementById('symbols').checked;
+            const exclude = document.getElementById('excludeChars').value;
+
+            let charset = '';
+            if (useUpper) charset += chars.uppercase;
+            if (useLower) charset += chars.lowercase;
+            if (useNumbers) charset += chars.numbers;
+            if (useSymbols) charset += chars.symbols;
+
+            if (exclude) {
+                charset = charset.split('').filter(c => !exclude.includes(c)).join('');
+            }
+
+            if (!charset) {
+                passwordText.textContent = '请至少选择一种字符类型';
+                passwordText.style.color = '#f87171';
+                return;
+            }
+
+            let password = '';
+            const array = new Uint32Array(length);
+            crypto.getRandomValues(array);
+            for (let i = 0; i < length; i++) {
+                password += charset[array[i] % charset.length];
+            }
+
+            passwordText.textContent = password;
+            passwordText.style.color = '#34d399';
+            updateStrength(password);
+        }
+
+        function updateStrength(password) {
+            let score = 0;
+            if (password.length >= 8) score++;
+            if (password.length >= 12) score++;
+            if (password.length >= 16) score++;
+            if (/[a-z]/.test(password)) score++;
+            if (/[A-Z]/.test(password)) score++;
+            if (/[0-9]/.test(password)) score++;
+            if (/[^a-zA-Z0-9]/.test(password)) score++;
+
+            const levels = [
+                { max: 2, label: '弱', color: '#f87171', width: '25%' },
+                { max: 4, label: '中等', color: '#fbbf24', width: '50%' },
+                { max: 5, label: '强', color: '#60a5fa', width: '75%' },
+                { max: 7, label: '非常强', color: '#34d399', width: '100%' }
+            ];
+
+            const level = levels.find(l => score <= l.max) || levels[levels.length - 1];
+            strengthFill.style.width = level.width;
+            strengthFill.style.background = level.color;
+            strengthLabel.textContent = `密码强度: ${level.label}`;
+            strengthLabel.style.color = level.color;
+        }
+
+        lengthSlider.addEventListener('input', () => {
+            lengthDisplay.textContent = lengthSlider.value;
+        });
+
+        document.querySelectorAll('.checkbox-item input').forEach(cb => {
+            cb.addEventListener('change', () => {
+                cb.closest('.checkbox-item').classList.toggle('active', cb.checked);
+            });
+        });
+
+        document.getElementById('generateBtn').addEventListener('click', generatePassword);
+
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const text = passwordText.textContent;
+            if (text && text !== '点击生成密码' && text !== '请至少选择一种字符类型') {
+                navigator.clipboard.writeText(text).then(() => {
+                    const btn = document.getElementById('copyBtn');
+                    btn.textContent = '已复制';
+                    setTimeout(() => btn.textContent = '复制', 1500);
+                });
+            }
+        });
+
+        document.getElementById('batchBtn').addEventListener('click', () => {
+            const count = parseInt(document.getElementById('batchCount').value);
+            const results = [];
+            for (let i = 0; i < count; i++) {
+                generatePassword();
+                results.push(passwordText.textContent);
+            }
+            document.getElementById('batchResult').innerHTML = results.map((p, i) =>
+                `<div class="password-item">${i + 1}. ${p}</div>`
+            ).join('');
+            generatePassword();
+        });
+
+        document.getElementById('copyAllBtn').addEventListener('click', () => {
+            const result = document.getElementById('batchResult');
+            if (result.textContent) {
+                navigator.clipboard.writeText(result.textContent).then(() => {
+                    const btn = document.getElementById('copyAllBtn');
+                    btn.textContent = '已复制';
+                    setTimeout(() => btn.textContent = '复制全部', 1500);
+                });
+            }
+        });
+
+        generatePassword();
+    </script>
+</body>
+</html>

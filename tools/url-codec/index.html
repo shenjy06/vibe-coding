@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL 编解码工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .panel h3 {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 15px;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            padding: 15px;
+            resize: vertical;
+            outline: none;
+            line-height: 1.5;
+        }
+        textarea:focus { border-color: #f59e0b; }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(245,158,11,0.4); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #ccc;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+        .arrow {
+            text-align: center;
+            font-size: 24px;
+            color: #f59e0b;
+            margin: 10px 0;
+        }
+        .url-parts {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 2;
+        }
+        .url-part {
+            margin-bottom: 5px;
+        }
+        .url-label {
+            display: inline-block;
+            width: 100px;
+            color: #94a3b8;
+        }
+        .url-value { color: #f59e0b; }
+        .batch-section { margin-top: 20px; }
+        .mode-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .mode-tab {
+            padding: 8px 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .mode-tab.active {
+            background: rgba(245,158,11,0.3);
+            border-color: #f59e0b;
+            color: #f59e0b;
+        }
+        .status {
+            text-align: center;
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 10px;
+        }
+        .status .error { color: #ef4444; }
+        .status .success { color: #10b981; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>URL 编解码工具</h1>
+        <div class="mode-tabs">
+            <div class="mode-tab active" data-mode="encode">编码</div>
+            <div class="mode-tab" data-mode="decode">解码</div>
+            <div class="mode-tab" data-mode="parse">解析 URL</div>
+        </div>
+        <div id="encodeSection">
+            <div class="panel">
+                <h3>原始文本</h3>
+                <textarea id="inputText" placeholder="输入要编码的文本...">Hello World! 你好世界 https://example.com/path?q=1&lang=zh</textarea>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" id="encodeBtn">编码 →</button>
+                <button class="btn btn-secondary" id="encodeComponentBtn">编码组件</button>
+                <button class="btn btn-secondary" id="clearBtn">清空</button>
+            </div>
+            <div class="panel">
+                <h3>编码结果</h3>
+                <textarea id="encodedText" placeholder="编码结果..." readonly></textarea>
+            </div>
+        </div>
+        <div id="decodeSection" style="display:none;">
+            <div class="panel">
+                <h3>编码文本</h3>
+                <textarea id="decodeInput" placeholder="输入要解码的 URL 编码文本...">Hello%20World!%20%E4%BD%A0%E5%A5%BD%E4%B8%96%E7%95%8C%20https%3A%2F%2Fexample.com%2Fpath%3Fq%3D1%26lang%3Dzh</textarea>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" id="decodeBtn">解码 →</button>
+                <button class="btn btn-secondary" id="decodeComponentBtn">解码组件</button>
+            </div>
+            <div class="panel">
+                <h3>解码结果</h3>
+                <textarea id="decodedText" placeholder="解码结果..." readonly></textarea>
+            </div>
+        </div>
+        <div id="parseSection" style="display:none;">
+            <div class="panel">
+                <h3>输入完整 URL</h3>
+                <textarea id="parseInput" placeholder="输入完整 URL...">https://user:pass@example.com:8080/path/to/page?name=test&id=123#section</textarea>
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="parseBtn">解析</button>
+                </div>
+            </div>
+            <div class="panel">
+                <h3>解析结果</h3>
+                <div class="url-parts" id="parseResult"></div>
+            </div>
+        </div>
+        <div class="status" id="status"></div>
+    </div>
+    <script>
+        const modeTabs = document.querySelectorAll('.mode-tab');
+        const sections = {
+            encode: document.getElementById('encodeSection'),
+            decode: document.getElementById('decodeSection'),
+            parse: document.getElementById('parseSection')
+        };
+
+        modeTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                modeTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                Object.valuesSections.forEach(s => s.style.display = 'none');
+                sections[tab.dataset.mode].style.display = 'block';
+            });
+        });
+
+        // Encode
+        document.getElementById('encodeBtn').addEventListener('click', () => {
+            try {
+                const input = document.getElementById('inputText').value;
+                document.getElementById('encodedText').value = encodeURI(input);
+                showStatus('编码成功', 'success');
+            } catch (e) {
+                showStatus('编码失败: ' + e.message, 'error');
+            }
+        });
+
+        document.getElementById('encodeComponentBtn').addEventListener('click', () => {
+            try {
+                const input = document.getElementById('inputText').value;
+                document.getElementById('encodedText').value = encodeURIComponent(input);
+                showStatus('组件编码成功', 'success');
+            } catch (e) {
+                showStatus('编码失败: ' + e.message, 'error');
+            }
+        });
+
+        // Decode
+        document.getElementById('decodeBtn').addEventListener('click', () => {
+            try {
+                const input = document.getElementById('decodeInput').value;
+                document.getElementById('decodedText').value = decodeURI(input);
+                showStatus('解码成功', 'success');
+            } catch (e) {
+                showStatus('解码失败: ' + e.message, 'error');
+            }
+        });
+
+        document.getElementById('decodeComponentBtn').addEventListener('click', () => {
+            try {
+                const input = document.getElementById('decodeInput').value;
+                document.getElementById('decodedText').value = decodeURIComponent(input);
+                showStatus('组件解码成功', 'success');
+            } catch (e) {
+                showStatus('解码失败: ' + e.message, 'error');
+            }
+        });
+
+        // Parse
+        document.getElementById('parseBtn').addEventListener('click', () => {
+            try {
+                const url = document.getElementById('parseInput').value;
+                const parsed = new URL(url);
+                const params = {};
+                parsed.searchParams.forEach((value, key) => { params[key] = value; });
+
+                document.getElementById('parseResult').innerHTML = `
+                    <div class="url-part"><span class="url-label">协议:</span><span class="url-value">${parsed.protocol}</span></div>
+                    <div class="url-part"><span class="url-label">用户名:</span><span class="url-value">${parsed.username || '(无)'}</span></div>
+                    <div class="url-part"><span class="url-label">密码:</span><span class="url-value">${parsed.password ? '******' : '(无)'}</span></div>
+                    <div class="url-part"><span class="url-label">主机:</span><span class="url-value">${parsed.hostname}</span></div>
+                    <div class="url-part"><span class="url-label">端口:</span><span class="url-value">${parsed.port || '(默认)'}</span></div>
+                    <div class="url-part"><span class="url-label">路径:</span><span class="url-value">${parsed.pathname}</span></div>
+                    <div class="url-part"><span class="url-label">查询参数:</span><span class="url-value">${JSON.stringify(params)}</span></div>
+                    <div class="url-part"><span class="url-label">锚点:</span><span class="url-value">${parsed.hash || '(无)'}</span></div>
+                `;
+                showStatus('解析成功', 'success');
+            } catch (e) {
+                showStatus('URL 格式错误: ' + e.message, 'error');
+                document.getElementById('parseResult').innerHTML = '';
+            }
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            document.getElementById('inputText').value = '';
+            document.getElementById('encodedText').value = '';
+        });
+
+        function showStatus(msg, type) {
+            const status = document.getElementById('status');
+            status.innerHTML = `<span class="${type}">${msg}</span>`;
+            setTimeout(() => status.textContent = '', 3000);
+        }
+    </script>
+</body>
+</html>

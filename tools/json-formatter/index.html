@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 格式化工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #e2e2e2, #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(102,126,234,0.4); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #ccc;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+        .btn-danger { background: rgba(239,68,68,0.3); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+        .btn-danger:hover { background: rgba(239,68,68,0.5); }
+        .editor-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        @media (max-width: 900px) { .editor-area { grid-template-columns: 1fr; } }
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 12px 15px;
+            background: rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header h3 { font-size: 14px; color: #aaa; }
+        .panel-body { padding: 15px; }
+        textarea {
+            width: 100%;
+            height: 400px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            padding: 15px;
+            resize: vertical;
+            outline: none;
+            line-height: 1.5;
+        }
+        textarea:focus { border-color: #667eea; }
+        .output-area {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            height: 400px;
+            overflow: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            font-size: 13px;
+            color: #888;
+        }
+        .status-bar .error { color: #ef4444; }
+        .status-bar .success { color: #10b981; }
+        .indent-select {
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #ccc;
+            font-size: 13px;
+        }
+        .indent-select option { background: #1a1a2e; }
+        .json-key { color: #7dd3fc; }
+        .json-string { color: #86efac; }
+        .json-number { color: #fbbf24; }
+        .json-boolean { color: #c084fc; }
+        .json-null { color: #f87171; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JSON 格式化工具</h1>
+        <div class="toolbar">
+            <button class="btn btn-primary" id="formatBtn">格式化</button>
+            <button class="btn btn-secondary" id="compressBtn">压缩</button>
+            <button class="btn btn-secondary" id="validateBtn">校验</button>
+            <button class="btn btn-secondary" id="copyBtn">复制结果</button>
+            <button class="btn btn-danger" id="clearBtn">清空</button>
+            <select class="indent-select" id="indentSelect">
+                <option value="2">缩进: 2 空格</option>
+                <option value="4">缩进: 4 空格</option>
+                <option value="tab">缩进: Tab</option>
+            </select>
+        </div>
+        <div class="editor-area">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>输入 JSON</h3>
+                    <span id="inputSize" style="font-size:12px;color:#666;">0 字符</span>
+                </div>
+                <div class="panel-body">
+                    <textarea id="input" placeholder="在此粘贴或输入 JSON..."></textarea>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>输出结果</h3>
+                    <span id="outputSize" style="font-size:12px;color:#666;">0 字符</span>
+                </div>
+                <div class="panel-body">
+                    <div class="output-area" id="output"></div>
+                </div>
+            </div>
+        </div>
+        <div class="status-bar">
+            <span id="status">就绪</span>
+            <span id="stats"></span>
+        </div>
+    </div>
+    <script>
+        const input = document.getElementById('input');
+        const output = document.getElementById('output');
+        const indentSelect = document.getElementById('indentSelect');
+        const status = document.getElementById('status');
+        const stats = document.getElementById('stats');
+        const inputSize = document.getElementById('inputSize');
+        const outputSize = document.getElementById('outputSize');
+
+        input.addEventListener('input', () => {
+            inputSize.textContent = input.value.length + ' 字符';
+        });
+
+        document.getElementById('formatBtn').addEventListener('click', () => {
+            try {
+                const obj = JSON.parse(input.value);
+                const indent = indentSelect.value === 'tab' ? '\t' : parseInt(indentSelect.value);
+                const formatted = JSON.stringify(obj, null, indent);
+                output.textContent = formatted;
+                outputSize.textContent = formatted.length + ' 字符';
+                status.innerHTML = '<span class="success">✓ 格式化成功</span>';
+                updateStats(obj);
+            } catch (e) {
+                status.innerHTML = '<span class="error">✗ JSON 格式错误: ' + e.message + '</span>';
+                output.textContent = '';
+            }
+        });
+
+        document.getElementById('compressBtn').addEventListener('click', () => {
+            try {
+                const obj = JSON.parse(input.value);
+                const compressed = JSON.stringify(obj);
+                output.textContent = compressed;
+                outputSize.textContent = compressed.length + ' 字符';
+                status.innerHTML = '<span class="success">✓ 压缩成功</span>';
+                const ratio = ((1 - compressed.length / input.value.length) * 100).toFixed(1);
+                stats.textContent = `压缩率: ${ratio}%`;
+            } catch (e) {
+                status.innerHTML = '<span class="error">✗ JSON 格式错误: ' + e.message + '</span>';
+            }
+        });
+
+        document.getElementById('validateBtn').addEventListener('click', () => {
+            try {
+                JSON.parse(input.value);
+                status.innerHTML = '<span class="success">✓ JSON 格式正确</span>';
+            } catch (e) {
+                status.innerHTML = '<span class="error">✗ ' + e.message + '</span>';
+            }
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            if (output.textContent) {
+                navigator.clipboard.writeText(output.textContent).then(() => {
+                    const btn = document.getElementById('copyBtn');
+                    btn.textContent = '已复制';
+                    setTimeout(() => btn.textContent = '复制结果', 1500);
+                });
+            }
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            input.value = '';
+            output.textContent = '';
+            inputSize.textContent = '0 字符';
+            outputSize.textContent = '0 字符';
+            status.textContent = '就绪';
+            stats.textContent = '';
+        });
+
+        function updateStats(obj) {
+            let keys = 0, arrays = 0, objects = 0, strings = 0, numbers = 0, booleans = 0, nulls = 0;
+            function count(val) {
+                if (val === null) { nulls++; return; }
+                if (Array.isArray(val)) { arrays++; val.forEach(count); return; }
+                if (typeof val === 'object') {
+                    objects++;
+                    Object.keys(val).forEach(k => { keys++; count(val[k]); });
+                    return;
+                }
+                if (typeof val === 'string') strings++;
+                else if (typeof val === 'number') numbers++;
+                else if (typeof val === 'boolean') booleans++;
+            }
+            count(obj);
+            stats.textContent = `对象: ${objects} | 数组: ${arrays} | 键: ${keys} | 字符串: ${strings} | 数字: ${numbers} | 布尔: ${booleans} | null: ${nulls}`;
+        }
+    </script>
+</body>
+</html>
